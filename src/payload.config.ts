@@ -16,6 +16,9 @@ const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default buildConfig({
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL,
+  // SPEC Block F §Security: only the app's own origin may call the Payload API with credentials.
+  cors: [process.env.NEXT_PUBLIC_SERVER_URL!],
+  csrf: [process.env.NEXT_PUBLIC_SERVER_URL!],
   admin: {
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
