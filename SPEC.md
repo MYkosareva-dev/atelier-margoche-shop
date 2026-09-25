@@ -100,11 +100,11 @@ atelier-margoche-shop/
 │       └── (frontend)/
 │           ├── layout.tsx
 │           ├── globals.css
-│           ├── page.tsx              # / catalogue  (+ loading.tsx)
-│           ├── products/[slug]/page.tsx            (+ loading.tsx)
-│           ├── order/[orderId]/page.tsx            (+ loading.tsx)
+│           ├── (catalogue)/page.tsx  # / catalogue  (+ loading.tsx, scoped to / by the route group)
+│           ├── products/[slug]/page.tsx            (no loading.tsx — real 404)
+│           ├── order/[orderId]/page.tsx            (no loading.tsx — real 404)
 │           ├── order/[orderId]/OrderStatusPoller.tsx
-│           ├── info/[slug]/page.tsx  # About, Impressum, Privacy, Terms & Returns (+ loading.tsx)
+│           ├── info/[slug]/page.tsx  # About, Impressum, Privacy, Terms & Returns (no loading.tsx — real 404)
 │           ├── not-found.tsx
 │           ├── error.tsx
 │           └── next/
@@ -236,7 +236,7 @@ Personas: **Margarita** — the owner. **Jonas** — a customer in Berlin. **Len
 4. Vercel → Settings → Environment Variables shows the same names.
 5. README explains what the shop sells, how the owner edits content, how to run locally, env variables and their sources, which optional tasks were done.
 
-- [ ] `git log --all -p | grep -E "sk_test_|sk_live_|whsec_|postgres(ql)?://" | grep -vE "localhost|sk_test_dummy|whsec_dummy"` returns nothing.
+- [ ] `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` returns nothing.
 - [ ] `.env.example` contains every variable from Block F §Security with no values.
 - [ ] README has the five sections listed in step 5.
 
@@ -284,7 +284,7 @@ export default buildConfig({
   db: postgresAdapter({
     idType: 'uuid',
     pool: { connectionString: process.env.DATABASE_URI! },
-    push: process.env.NODE_ENV === 'development', // dev: auto-sync; prod: migrations only
+    push: false, // schema changes only via committed migrations, in every environment
   }),
   sharp,
   plugins: [
@@ -296,6 +296,16 @@ export default buildConfig({
   ],
 })
 ```
+
+> Decision: The Vercel Blob plugin is configured with `enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN)`. While the token is empty (local development) the plugin is off and uploads fall back to Payload's local disk storage under `media/`, which is git-ignored. Production and Preview always have the token, so uploads there go to Blob (US2). The plugin also sets `alwaysInsertFields: true`, which keeps its `prefix` column in the schema even when it is disabled. Without it, a migration generated locally would be missing a column that production needs.
+
+> Decision: The config lives at `src/payload.config.ts` (the create-payload-app blank-template location, resolved through the `@payload-config` tsconfig alias), not at the repository root. Imports are therefore `./collections/*`.
+
+> Decision: Payload replaces its built-in field checks (`required`, `min`, `maxLength`, …) when a field has a custom `validate`. Each custom `validate` therefore enforces the full Block F rule and returns the Block F copy, including the async unique-slug check ("A product with this slug already exists."). The upload errors "Only JPEG, PNG and WebP images are allowed." and "File exceeds the 8 MB limit." come from a Media `beforeOperation` hook, plus `upload.responseOnLimit` for the multipart parser. A Media `beforeDelete` hook returns the Rule B11 copy because `products.image` is required (NOT NULL).
+
+> Decision: `db.push` is `false` in every environment. The one Supabase database serves local development and production, and a dev push writes a `dev` row to `payload_migrations` that makes `payload migrate` in the Vercel build stop and ask for confirmation. The schema therefore changes only through committed migrations: after changing any collection run `npm run payload migrate:create && npm run migrate`. `npm run ci` applies the same migrations on Vercel.
+
+> Decision: The `revalidatePath` hooks do nothing when `context.disableRevalidate` is set. Only `src/seed.ts` sets it, because it runs outside a Next.js request where `revalidatePath` is unavailable.
 
 ### Users (admin only)
 
@@ -937,7 +947,7 @@ Layout 1280: two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), d
 
 | State | Exact rendering |
 |---|---|
-| Loading | `loading.tsx`: image Skeleton 4/5 + 4 text Skeletons. |
+| Loading | No skeleton — single query, real 404 required. |
 | Empty (sold out) | `#buy-now` replaced by `<span id="sold-out" class="badge-soldout">Sold out</span>` + p "This edition is gone. New prints are released regularly — see the catalogue." |
 | Not found | `notFound()` → `not-found.tsx`: h1 "This page does not exist.", link "Back to prints". |
 | Error | Toast on failed checkout, copy = `error.message` from Block D table; button returns to idle. |
@@ -978,13 +988,15 @@ Server component loads the order by UUID; **if `order.stripeSessionId !== sessio
 
 | State | Exact rendering |
 |---|---|
-| Loading | `loading.tsx`: pill Skeleton + h1 Skeleton + card Skeleton. |
+| Loading | No skeleton — single query, real 404 required. |
 | Empty / not found | UUID unknown or `session_id` mismatch → `not-found.tsx` (copy as Screen 2). |
 | Error | `error.tsx` (same as Screen 1) with h2 "We couldn't load your order". |
 
 ### Screen 4 — `/info/[slug]` Static page
 
-Layout: `max-w-2xl mx-auto prose prose-invert`. h1 = page title; rich text rendered via `@payloadcms/richtext-lexical/react` `RichText`. Slug not found → `not-found.tsx`. Loading: h1 Skeleton + 6 line Skeletons. Empty: content is required, so cannot be empty. Error: `error.tsx` "We couldn't load this page".
+Layout: `max-w-2xl mx-auto prose prose-invert`. h1 = page title; rich text rendered via `@payloadcms/richtext-lexical/react` `RichText`. Slug not found → `not-found.tsx`. Loading: no skeleton — single query, real 404 required. Empty: content is required, so cannot be empty. Error: `error.tsx` "We couldn't load this page".
+
+> Decision: Only the catalogue has a `loading.tsx`, placed in the `(catalogue)` route group so its Suspense boundary covers `/` alone. `/products/[slug]`, `/order/[orderId]` and `/info/[slug]` have no loading boundary. Each is a single query, and without a boundary the response is not streamed before `notFound()` runs, so an unknown slug returns a real HTTP 404 with `not-found.tsx`. A `loading.tsx` there, or at the `(frontend)` root, would send the shell first and downgrade it to a soft 404 (HTTP 200). `/products/[slug]` and `/info/[slug]` return `[]` from `generateStaticParams`, so the build never queries them; they render on first request and are then cached with `revalidate = 60` plus hook-driven `revalidatePath`.
 
 ### Admin `/admin`
 
@@ -1177,12 +1189,12 @@ Shop operator is based in Germany, ships to Europe. This section lists what the 
 
 ## BLOCK H: Definition of Done
 
-1. **Files & routes.** Exactly 5 collections (`users`, `media`, `products`, `orders`, `pages`); exactly 2 custom route handlers (`/next/checkout`, `/next/stripe/webhook`); public routes `/`, `/products/[slug]`, `/order/[orderId]`, `/info/[slug]` plus `not-found.tsx`, `error.tsx`, `loading.tsx` for each. `npm run build` passes with zero TypeScript errors and zero ESLint errors.
+1. **Files & routes.** Exactly 5 collections (`users`, `media`, `products`, `orders`, `pages`); exactly 2 custom route handlers (`/next/checkout`, `/next/stripe/webhook`); public routes `/`, `/products/[slug]`, `/order/[orderId]`, `/info/[slug]` plus `not-found.tsx` and `error.tsx`; `loading.tsx` for the catalogue only (detail routes need a real 404, Block E). `npm run build` passes with zero TypeScript errors and zero ESLint errors.
 2. **Acceptance boxes.** Every checkbox in Block B passes at 1280 and 375; no horizontal scrollbar at either width on any public route.
 3. **Zero console errors** on this click-script in a fresh browser: `/` → click first card → click Buy now → complete with 4242 → land on `/order/…` → wait for "Paid" → click Back to prints → footer Impressum → footer Privacy → footer Terms.
 4. **Payment invariants.** (a) `grep -rn "status: 'paid'" src/` returns exactly one hit, inside `next/stripe/webhook/route.ts`. (b) A declined-card checkout leaves the order `pending` (screenshot of admin Orders list attached to the payments PR). (c) Replaying the same webhook event with `stripe events resend` produces no second write. (d) A request to the webhook without a signature returns 400.
 5. **Live-edit invariant.** Editing a product price in `/admin` on the production deployment is visible on the public page within 60 s without a new Vercel deployment (Vercel → Deployments shows no new build).
-6. **Secrets.** `git log --all -p | grep -E "sk_test_|sk_live_|whsec_|postgres(ql)?://" | grep -vE "localhost|sk_test_dummy|whsec_dummy"` returns nothing (the `localhost` example in `.env.example` and CI dummy values are the only tolerated matches). `.env.example` lists all 6 variables with source comments. Vercel has the same 6 set for Production and Preview.
+6. **Secrets.** `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` returns nothing. The pattern matches only full-length Stripe keys and connection strings with credentials for a non-localhost host, so `.env.example` comments, CI dummy values and docs that mention key prefixes do not match. `.env.example` lists all 6 variables with source comments. Vercel has the same 6 set for Production and Preview.
 7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): catalogue renders 4 cards; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; `/info/impressum` renders.
 8. **CI.** `.github/workflows/ci.yml` runs on every PR: `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build` (with dummy env values that satisfy B15's `sk_test_` prefix check and a `DATABASE_URI` pointing at a `postgres:16` service container). PR template contains the checklist: tests green · no secrets · matches SPEC.md · screenshots for UI changes.
 9. **Deployment.** Live at `https://<project>.vercel.app`; Vercel build command `npm run ci` where `"ci": "payload migrate && next build"`; Blob store linked; Stripe webhook endpoint registered and showing recent 200s in the Dashboard; project deployed from the developer's personal GitHub repository, and the full history pushed to the Turing College repository at hand-in.

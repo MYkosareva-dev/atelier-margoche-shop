@@ -15,9 +15,9 @@ You are the QA gate for Atelier Margoche. You do not fix code; you produce evide
 4. Static invariants (run and paste the commands):
    - `grep -rn "status: 'paid'" src/` → exactly one hit, in the webhook route.
    - `grep -rn "sk_test_" src/lib/stripe.ts` → guard present.
-   - `git log --all -p | grep -E "sk_test_|sk_live_|whsec_|postgres(ql)?://" | grep -vE "localhost|sk_test_dummy|whsec_dummy" | head` → empty.
+   - `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)" | head` → empty.
    - `ls src/migrations` → at least one migration.
-   - For each public route folder, confirm `loading.tsx` exists; confirm `not-found.tsx` and `error.tsx` in `(frontend)`.
+   - Confirm `loading.tsx` exists only at `(frontend)/(catalogue)/` (detail routes have none so they return real 404s); confirm `not-found.tsx` and `error.tsx` in `(frontend)`.
    - `grep -rn "incl. VAT" src/app` → present on catalogue, product and order pages.
 5. README check: the sections listed in DoD #10 exist in that order; no secret-looking strings.
 6. Walk every checkbox in Block B; mark PASS only with evidence (test name, grep, or file:line). Otherwise mark MANUAL with the exact steps the owner must perform (e.g. "edit price in /admin on production, reload public page, confirm no new Vercel deployment").

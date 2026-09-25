@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+/* Design tokens — SPEC.md Block E. Dark theme only. */
+:root {
+  --bg: #0b0b0f;            /* page background */
+  --surface: #14141b;       /* cards, footer */
+  --surface-2: #1c1c26;     /* hover, inputs */
+  --border: #2a2a38;
+  --text: #f2f2f5;
+  --text-muted: #9a9aad;
+  --accent: #c9a24a;        /* brass */
+  --accent-2: #7b5cff;      /* violet, gradient partner */
+  --gradient: linear-gradient(135deg, #c9a24a 0%, #7b5cff 100%);
+  --danger: #ff5c7a;
+  --success: #41d39a;
+  --radius: 14px;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+}
+
+/* next/font sets --font-sans / --font-display on <body> (layout.tsx), overriding the fallback stacks above. */
+
+/* shadcn/ui semantic colours mapped onto the SPEC tokens. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--bg);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--accent-2);
+}
+
+@layer base {
+  * { border-color: var(--border); }
+}
+
+body { background: var(--bg); color: var(--text); font-family: var(--font-sans); }
+/* Declared with @utility so the SPEC class names also work with variants (e.g. group-hover:gradient-ring). */
+@utility gradient-text { background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@utility gradient-ring { box-shadow: 0 0 0 1px var(--border), 0 0 40px -12px var(--accent-2); }

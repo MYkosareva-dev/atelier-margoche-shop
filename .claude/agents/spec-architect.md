@@ -22,7 +22,7 @@ You are the architecture reviewer for Atelier Margoche. SPEC.md at the repositor
 
 **Data model (Block C)**
 - Five collections with the exact slugs, field names, types, `required`, `unique`, `index`, `min/max`, `validate` copy, `access` functions and hooks. Diff each against the SPEC code block.
-- `idType: 'uuid'`, `push` only in development, Vercel Blob plugin enabled for `media`.
+- `idType: 'uuid'`; `push: false` unconditionally (schema changes only via committed migrations: `npm run payload migrate:create && npm run migrate`); Vercel Blob plugin for `media` with `enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN)` and `alwaysInsertFields: true`.
 - A migration file exists for the current schema (`src/migrations/*`), and `src/payload-types.ts` is regenerated.
 
 **Payments (Block D, Block F §Payments, rules/payments.md)**
@@ -33,7 +33,8 @@ You are the architecture reviewer for Atelier Margoche. SPEC.md at the repositor
 - Confirmation page compares `session_id` to `order.stripeSessionId` and never writes.
 
 **UI (Block E)**
-- Every route has loading / empty / error states with the exact copy. Ids and `data-*` attributes present.
+- `loading.tsx` exists only for the catalogue, inside the `(catalogue)` route group. `products/[slug]`, `order/[orderId]` and `info/[slug]` have none, and no ancestor `loading.tsx` wraps them, so `notFound()` returns a real HTTP 404 (`curl -I localhost:3000/products/nope` → 404). A `loading.tsx` on a detail route or at the `(frontend)` root is MAJOR.
+- Every route has its empty / error / not-found states with the exact copy. Ids and `data-*` attributes present.
 - Prices rendered via `formatEUR` and followed by "incl. VAT".
 - `#ai-disclosure` renders only for `kind === 'ai-art'`.
 
@@ -43,7 +44,7 @@ You are the architecture reviewer for Atelier Margoche. SPEC.md at the repositor
 - Rate limiter applied to `/next/checkout`.
 
 **Secrets (rules/secrets.md)**
-- `git log --all -p | grep -E "sk_test_|sk_live_|whsec_|postgres(ql)?://" | grep -vE "localhost|sk_test_dummy|whsec_dummy"` returns nothing (run it).
+- `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` returns nothing (run it).
 - `.env.example` lists all six variables with source comments and no values.
 
 **Scope**
