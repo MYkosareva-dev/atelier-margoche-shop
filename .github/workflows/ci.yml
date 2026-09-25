@@ -36,7 +36,6 @@ jobs:
       NEXT_PUBLIC_SERVER_URL: http://localhost:3000
       STRIPE_SECRET_KEY: sk_test_dummy
       STRIPE_WEBHOOK_SECRET: whsec_dummy
-      BLOB_READ_WRITE_TOKEN: vercel_blob_rw_dummy
       NODE_OPTIONS: --max-old-space-size=4096
 
     steps:
