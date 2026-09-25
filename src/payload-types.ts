@@ -70,6 +70,7 @@ export interface Config {
     users: User;
     media: Media;
     products: Product;
+    orders: Order;
     pages: Page;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -81,6 +82,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
+    orders: OrdersSelect<false> | OrdersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -219,6 +221,52 @@ export interface Product {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders".
+ */
+export interface Order {
+  id: string;
+  /**
+   * Human-readable, e.g. AM-2026-000042
+   */
+  orderNumber: string;
+  status: 'pending' | 'paid' | 'cancelled';
+  stripeSessionId: string;
+  stripePaymentIntentId?: string | null;
+  items: {
+    product?: (string | null) | Product;
+    titleSnapshot: string;
+    unitPrice: number;
+    quantity: number;
+    id?: string | null;
+  }[];
+  currency: string;
+  /**
+   * Cents
+   */
+  total: number;
+  customerEmail?: string | null;
+  shippingAddress?: {
+    name?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    postalCode?: string | null;
+    city?: string | null;
+    state?: string | null;
+    /**
+     * ISO 3166-1 alpha-2
+     */
+    country?: string | null;
+  };
+  paidAt?: string | null;
+  /**
+   * Private note for the owner (e.g. tracking number).
+   */
+  ownerNote?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "pages".
  */
 export interface Page {
@@ -278,6 +326,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'products';
         value: string | Product;
+      } | null)
+    | ({
+        relationTo: 'orders';
+        value: string | Order;
       } | null)
     | ({
         relationTo: 'pages';
@@ -405,6 +457,43 @@ export interface ProductsSelect<T extends boolean = true> {
   image?: T;
   kind?: T;
   soldOut?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders_select".
+ */
+export interface OrdersSelect<T extends boolean = true> {
+  orderNumber?: T;
+  status?: T;
+  stripeSessionId?: T;
+  stripePaymentIntentId?: T;
+  items?:
+    | T
+    | {
+        product?: T;
+        titleSnapshot?: T;
+        unitPrice?: T;
+        quantity?: T;
+        id?: T;
+      };
+  currency?: T;
+  total?: T;
+  customerEmail?: T;
+  shippingAddress?:
+    | T
+    | {
+        name?: T;
+        line1?: T;
+        line2?: T;
+        postalCode?: T;
+        city?: T;
+        state?: T;
+        country?: T;
+      };
+  paidAt?: T;
+  ownerNote?: T;
   updatedAt?: T;
   createdAt?: T;
 }

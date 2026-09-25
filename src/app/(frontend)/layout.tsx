@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { Fraunces, Inter } from 'next/font/google'
 import React from 'react'
 
+import { Toaster } from '@/components/Toaster'
+
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-sans' })
@@ -45,6 +47,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
             </nav>
           </div>
         </footer>
+        <Toaster />
       </body>
     </html>
   )

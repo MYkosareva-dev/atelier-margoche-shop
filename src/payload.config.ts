@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url'
 import { Users } from './collections/Users'
 import { Media, MAX_UPLOAD_BYTES } from './collections/Media'
 import { Products } from './collections/Products'
+import { Orders } from './collections/Orders'
 import { Pages } from './collections/Pages'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -20,7 +21,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     meta: { titleSuffix: ' · Atelier Margoche' },
   },
-  collections: [Users, Media, Products, Pages],
+  collections: [Users, Media, Products, Orders, Pages],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET!,
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
