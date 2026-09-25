@@ -27,6 +27,8 @@ npm run test           # vitest (unit)
 npm run test:e2e       # playwright (needs `npm run dev` + seeded DB)
 npm run seed           # 4 products + 4 pages from src/seed.ts
 npm run payload migrate:create   # after ANY collection change
+npm run migrate                  # apply pending migrations (db push is off everywhere)
+# after changing any collection: npm run payload migrate:create && npm run migrate
 npm run payload generate:types   # refresh src/payload-types.ts
 stripe listen --forward-to localhost:3000/next/stripe/webhook   # local webhooks
 ```

@@ -17,10 +17,9 @@ test('AI disclosure shows only for AI art', async ({ page }) => {
 })
 
 test('unknown product renders the not-found page', async ({ page }) => {
-  // loading.tsx streams the shell first, so notFound() yields a soft 404 (status 200 + noindex), not an HTTP 404.
-  await page.goto('/products/does-not-exist')
+  const res = await page.goto('/products/does-not-exist')
+  expect(res?.status()).toBe(404)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page does not exist.')
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex')
 })
 
 test('/info/impressum renders and every footer link is present', async ({ page }) => {

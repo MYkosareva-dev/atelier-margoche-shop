@@ -100,11 +100,11 @@ atelier-margoche-shop/
 │       └── (frontend)/
 │           ├── layout.tsx
 │           ├── globals.css
-│           ├── page.tsx              # / catalogue  (+ loading.tsx)
-│           ├── products/[slug]/page.tsx            (+ loading.tsx)
-│           ├── order/[orderId]/page.tsx            (+ loading.tsx)
+│           ├── (catalogue)/page.tsx  # / catalogue  (+ loading.tsx, scoped to / by the route group)
+│           ├── products/[slug]/page.tsx            (no loading.tsx — real 404)
+│           ├── order/[orderId]/page.tsx            (no loading.tsx — real 404)
 │           ├── order/[orderId]/OrderStatusPoller.tsx
-│           ├── info/[slug]/page.tsx  # About, Impressum, Privacy, Terms & Returns (+ loading.tsx)
+│           ├── info/[slug]/page.tsx  # About, Impressum, Privacy, Terms & Returns (no loading.tsx — real 404)
 │           ├── not-found.tsx
 │           ├── error.tsx
 │           └── next/
@@ -284,7 +284,7 @@ export default buildConfig({
   db: postgresAdapter({
     idType: 'uuid',
     pool: { connectionString: process.env.DATABASE_URI! },
-    push: process.env.NODE_ENV === 'development', // dev: auto-sync; prod: migrations only
+    push: false, // schema changes only via committed migrations, in every environment
   }),
   sharp,
   plugins: [
@@ -302,6 +302,8 @@ export default buildConfig({
 > Decision: The config lives at `src/payload.config.ts` (the create-payload-app blank-template location, resolved through the `@payload-config` tsconfig alias), not at the repository root. Imports are therefore `./collections/*`.
 
 > Decision: Payload replaces its built-in field checks (`required`, `min`, `maxLength`, …) when a field has a custom `validate`. Each custom `validate` therefore enforces the full Block F rule and returns the Block F copy, including the async unique-slug check ("A product with this slug already exists."). The upload errors "Only JPEG, PNG and WebP images are allowed." and "File exceeds the 8 MB limit." come from a Media `beforeOperation` hook, plus `upload.responseOnLimit` for the multipart parser. A Media `beforeDelete` hook returns the Rule B11 copy because `products.image` is required (NOT NULL).
+
+> Decision: `db.push` is `false` in every environment. The one Supabase database serves local development and production, and a dev push writes a `dev` row to `payload_migrations` that makes `payload migrate` in the Vercel build stop and ask for confirmation. The schema therefore changes only through committed migrations: after changing any collection run `npm run payload migrate:create && npm run migrate`. `npm run ci` applies the same migrations on Vercel.
 
 > Decision: The `revalidatePath` hooks do nothing when `context.disableRevalidate` is set. Only `src/seed.ts` sets it, because it runs outside a Next.js request where `revalidatePath` is unavailable.
 
@@ -945,7 +947,7 @@ Layout 1280: two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), d
 
 | State | Exact rendering |
 |---|---|
-| Loading | `loading.tsx`: image Skeleton 4/5 + 4 text Skeletons. |
+| Loading | No skeleton — single query, real 404 required. |
 | Empty (sold out) | `#buy-now` replaced by `<span id="sold-out" class="badge-soldout">Sold out</span>` + p "This edition is gone. New prints are released regularly — see the catalogue." |
 | Not found | `notFound()` → `not-found.tsx`: h1 "This page does not exist.", link "Back to prints". |
 | Error | Toast on failed checkout, copy = `error.message` from Block D table; button returns to idle. |
@@ -986,15 +988,15 @@ Server component loads the order by UUID; **if `order.stripeSessionId !== sessio
 
 | State | Exact rendering |
 |---|---|
-| Loading | `loading.tsx`: pill Skeleton + h1 Skeleton + card Skeleton. |
+| Loading | No skeleton — single query, real 404 required. |
 | Empty / not found | UUID unknown or `session_id` mismatch → `not-found.tsx` (copy as Screen 2). |
 | Error | `error.tsx` (same as Screen 1) with h2 "We couldn't load your order". |
 
 ### Screen 4 — `/info/[slug]` Static page
 
-Layout: `max-w-2xl mx-auto prose prose-invert`. h1 = page title; rich text rendered via `@payloadcms/richtext-lexical/react` `RichText`. Slug not found → `not-found.tsx`. Loading: h1 Skeleton + 6 line Skeletons. Empty: content is required, so cannot be empty. Error: `error.tsx` "We couldn't load this page".
+Layout: `max-w-2xl mx-auto prose prose-invert`. h1 = page title; rich text rendered via `@payloadcms/richtext-lexical/react` `RichText`. Slug not found → `not-found.tsx`. Loading: no skeleton — single query, real 404 required. Empty: content is required, so cannot be empty. Error: `error.tsx` "We couldn't load this page".
 
-> Decision: Every route has a `loading.tsx`, so Next.js streams the page shell before the data query finishes. A `notFound()` after that point renders `not-found.tsx` as a soft 404: HTTP 200 plus `<meta name="robots" content="noindex">`. Tests check the rendered copy and the noindex tag, not the status code. `/products/[slug]` and `/info/[slug]` return `[]` from `generateStaticParams`, so the build never queries them; they render on first request and are then cached with `revalidate = 60` plus hook-driven `revalidatePath`.
+> Decision: Only the catalogue has a `loading.tsx`, placed in the `(catalogue)` route group so its Suspense boundary covers `/` alone. `/products/[slug]`, `/order/[orderId]` and `/info/[slug]` have no loading boundary. Each is a single query, and without a boundary the response is not streamed before `notFound()` runs, so an unknown slug returns a real HTTP 404 with `not-found.tsx`. A `loading.tsx` there, or at the `(frontend)` root, would send the shell first and downgrade it to a soft 404 (HTTP 200). `/products/[slug]` and `/info/[slug]` return `[]` from `generateStaticParams`, so the build never queries them; they render on first request and are then cached with `revalidate = 60` plus hook-driven `revalidatePath`.
 
 ### Admin `/admin`
 
@@ -1187,7 +1189,7 @@ Shop operator is based in Germany, ships to Europe. This section lists what the 
 
 ## BLOCK H: Definition of Done
 
-1. **Files & routes.** Exactly 5 collections (`users`, `media`, `products`, `orders`, `pages`); exactly 2 custom route handlers (`/next/checkout`, `/next/stripe/webhook`); public routes `/`, `/products/[slug]`, `/order/[orderId]`, `/info/[slug]` plus `not-found.tsx`, `error.tsx`, `loading.tsx` for each. `npm run build` passes with zero TypeScript errors and zero ESLint errors.
+1. **Files & routes.** Exactly 5 collections (`users`, `media`, `products`, `orders`, `pages`); exactly 2 custom route handlers (`/next/checkout`, `/next/stripe/webhook`); public routes `/`, `/products/[slug]`, `/order/[orderId]`, `/info/[slug]` plus `not-found.tsx` and `error.tsx`; `loading.tsx` for the catalogue only (detail routes need a real 404, Block E). `npm run build` passes with zero TypeScript errors and zero ESLint errors.
 2. **Acceptance boxes.** Every checkbox in Block B passes at 1280 and 375; no horizontal scrollbar at either width on any public route.
 3. **Zero console errors** on this click-script in a fresh browser: `/` → click first card → click Buy now → complete with 4242 → land on `/order/…` → wait for "Paid" → click Back to prints → footer Impressum → footer Privacy → footer Terms.
 4. **Payment invariants.** (a) `grep -rn "status: 'paid'" src/` returns exactly one hit, inside `next/stripe/webhook/route.ts`. (b) A declined-card checkout leaves the order `pending` (screenshot of admin Orders list attached to the payments PR). (c) Replaying the same webhook event with `stripe events resend` produces no second write. (d) A request to the webhook without a signature returns 400.

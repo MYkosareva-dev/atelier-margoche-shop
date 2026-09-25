@@ -27,7 +27,7 @@ export default buildConfig({
   db: postgresAdapter({
     idType: 'uuid',
     pool: { connectionString: process.env.DATABASE_URI! },
-    push: process.env.NODE_ENV === 'development', // dev: auto-sync; prod: migrations only
+    push: false, // schema changes only via committed migrations (npm run migrate), in every environment
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
   sharp,
