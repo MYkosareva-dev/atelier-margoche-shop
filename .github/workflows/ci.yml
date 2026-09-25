@@ -75,3 +75,82 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  e2e:
+    name: e2e (Playwright)
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: shop
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Same dummy values as the quality job; the e2e checks never reach Stripe.
+      DATABASE_URI: postgresql://ci:ci@localhost:5432/shop
+      PAYLOAD_SECRET: ci-secret-not-real-0000000000000000
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+      NODE_OPTIONS: --max-old-space-size=4096
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Apply migrations to CI database
+        run: npx payload migrate
+
+      - name: Seed CI database
+        run: npm run seed
+
+      - name: Build
+        run: npm run build
+
+      - name: Start server
+        run: |
+          npm run start > server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000 && exit 0
+            sleep 2
+          done
+          echo "::error::Server did not answer on http://localhost:3000 within 120 s."
+          cat server.log
+          exit 1
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Server log
+        if: failure()
+        run: cat server.log
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -1,6 +1,7 @@
 /**
  * Seeds 4 products and 4 pages (SPEC Block C). Run with `npm run seed`.
- * Idempotent, keyed by slug. Products are upserted: an existing row gets the seed's title, price, kind,
+ * Refuses to run when any product exists; `npm run seed -- --force` upserts anyway.
+ * With --force it is idempotent, keyed by slug. Products are upserted: an existing row gets the seed's title, price, kind,
  * description and soldOut back (its image is kept, so no duplicate media). Pages that already exist are
  * left untouched, so the owner's legal texts are never overwritten.
  */
@@ -173,6 +174,15 @@ async function findImageFor(slug: string) {
 
 async function seed() {
   const payload = await getPayload({ config })
+
+  // Guard against overwriting the owner's live catalogue by accident.
+  const force = process.argv.includes('--force')
+  const { totalDocs } = await payload.count({ collection: 'products' })
+  if (totalDocs > 0 && !force) {
+    console.error('Refusing to seed: products already exist. Pass --force to upsert anyway.')
+    process.exit(1)
+  }
+
   await fs.mkdir(IMAGES_DIR, { recursive: true })
 
   for (const p of PRODUCTS) {
