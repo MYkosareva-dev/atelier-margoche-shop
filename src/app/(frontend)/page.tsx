@@ -1,59 +1,49 @@
-import { headers as getHeaders } from 'next/headers.js'
-import Image from 'next/image'
-import { getPayload } from 'payload'
-import React from 'react'
-import { fileURLToPath } from 'url'
+import Link from 'next/link'
+import { Sparkles } from 'lucide-react'
 
-import config from '@/payload.config'
-import './styles.css'
+import { ProductCard } from '@/components/ProductCard'
+import { getPayload } from '@/lib/payload'
 
-export default async function HomePage() {
-  const headers = await getHeaders()
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers })
+// Safety net; Payload afterChange/afterDelete hooks revalidate immediately (SPEC Rule B10).
+export const revalidate = 60
 
-  const fileURL = `vscode://file/${fileURLToPath(import.meta.url)}`
+export default async function CataloguePage() {
+  const payload = await getPayload()
+  const { docs: products } = await payload.find({
+    collection: 'products',
+    depth: 1,
+    limit: 50,
+    pagination: false,
+    sort: 'createdAt',
+  })
 
   return (
-    <div className="home">
-      <div className="content">
-        <picture>
-          <source srcSet="https://raw.githubusercontent.com/payloadcms/payload/3.x/packages/ui/src/assets/payload-favicon.svg" />
-          <Image
-            alt="Payload Logo"
-            height={65}
-            src="https://raw.githubusercontent.com/payloadcms/payload/3.x/packages/ui/src/assets/payload-favicon.svg"
-            width={65}
-          />
-        </picture>
-        {!user && <h1>Welcome to your new project.</h1>}
-        {user && <h1>Welcome back, {user.email}</h1>}
-        <div className="links">
-          <a
-            className="admin"
-            href={payloadConfig.routes.admin}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Go to admin panel
-          </a>
-          <a
-            className="docs"
-            href="https://payloadcms.com/docs"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Documentation
-          </a>
+    <>
+      <section className="mb-10">
+        <h1 className="font-[family-name:var(--font-display)] text-[32px] leading-tight md:text-[44px]">
+          Prints from the <span className="gradient-text">atelier</span>
+        </h1>
+        <p className="mt-3 text-[var(--text-muted)]">
+          Photographs and AI-made artworks, printed on archival paper. Free shipping in Europe.
+        </p>
+      </section>
+
+      {products.length === 0 ? (
+        <div id="catalogue-empty" className="flex flex-col items-center gap-3 py-16 text-center">
+          <Sparkles className="size-8 text-[var(--accent)]" aria-hidden />
+          <h2 className="text-xl font-medium">No prints yet</h2>
+          <p className="text-[var(--text-muted)]">The atelier is preparing its first release. Check back soon.</p>
+          <Link href="/info/about" className="text-sm underline underline-offset-4">
+            About the atelier
+          </Link>
         </div>
-      </div>
-      <div className="footer">
-        <p>Update this page by editing</p>
-        <a className="codeLink" href={fileURL}>
-          <code>app/(frontend)/page.tsx</code>
-        </a>
-      </div>
-    </div>
+      ) : (
+        <section id="catalogue" className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
+          {products.map((product, i) => (
+            <ProductCard key={product.id} product={product} priority={i < 3} />
+          ))}
+        </section>
+      )}
+    </>
   )
 }
