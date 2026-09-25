@@ -82,6 +82,7 @@ atelier-margoche-shop/
 ├── package.json
 ├── payload.config.ts
 ├── tsconfig.json
+├── vercel.json                       # {"regions": ["fra1"]} only, no env values
 ├── vitest.config.ts
 ├── playwright.config.ts
 ├── src/
@@ -461,7 +462,8 @@ export const Orders: CollectionConfig = {
     beforeChange: [({ req, data, originalDoc }) => {
       // Admin UI requests carry req.user; server-side Local API calls from the webhook do not.
       if (req.user && originalDoc && data.status && data.status !== originalDoc.status) {
-        throw new Error('Order status is set by Stripe confirmation and cannot be edited.')
+        // public APIError, so the admin UI shows this copy instead of "Something went wrong."
+        throw new APIError('Order status is set by Stripe confirmation and cannot be edited.', 400, undefined, true)
       }
       return data
     }],
