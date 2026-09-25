@@ -1024,6 +1024,8 @@ Payload's default UI, unmodified except: `admin.meta.titleSuffix: ' · Atelier M
 
 Images use `next/image` with `sizes="(max-width: 768px) 100vw, 33vw"` on cards and `60vw` on hero; `remotePatterns` includes `*.public.blob.vercel-storage.com`.
 
+> Decision: `images.unoptimized` is `true` only when `NODE_ENV === 'development'`. Because `NEXT_PUBLIC_SERVER_URL` is set, Payload returns absolute media URLs (`http://localhost:3000/api/media/file/…`) in local dev. The Next 16 image optimizer then refuses them with "hostname resolved to private IP", an SSRF guard. `images.dangerouslyAllowLocalIP` would switch that guard off, so dev images are served unoptimized instead. Production and Preview use Blob `https://` URLs and stay optimized.
+
 ---
 
 ## BLOCK F: Business Logic
