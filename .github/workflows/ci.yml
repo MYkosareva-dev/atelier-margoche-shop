@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: lint · typecheck · unit · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: shop
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Dummy values only — they satisfy boot guards; nothing real is used in CI.
+      DATABASE_URI: postgresql://ci:ci@localhost:5432/shop
+      PAYLOAD_SECRET: ci-secret-not-real-0000000000000000
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+      BLOB_READ_WRITE_TOKEN: vercel_blob_rw_dummy
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Secret scan (staged history of this PR)
+        run: |
+          if git log -p origin/${{ github.base_ref || 'main' }}..HEAD 2>/dev/null | grep -E "sk_test_[A-Za-z0-9]{10,}|sk_live_|whsec_[A-Za-z0-9]{10,}|postgres(ql)?://" | grep -vE "localhost|ci:ci@" ; then
+            echo "::error::A secret-looking string was found in the commits of this PR."; exit 1
+          fi
+          echo "No secrets found."
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test -- --run
+
+      - name: Apply migrations to CI database
+        run: npx payload migrate
+
+      - name: Build
+        run: npm run build

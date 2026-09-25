@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Bash(cat .env*)",
+      "Bash(cat ./.env*)",
+      "Bash(type .env*)",
+      "Bash(Get-Content .env*)",
+      "Bash(gc .env*)",
+      "Bash(more .env*)",
+      "Bash(less .env*)",
+      "Bash(head .env*)",
+      "Bash(tail .env*)",
+      "Bash(grep * .env*)",
+      "Bash(grep -r *)",
+      "Bash(rg *)",
+      "Bash(findstr *)",
+      "Bash(Select-String *)",
+      "Bash(echo $STRIPE*)",
+      "Bash(echo $DATABASE*)",
+      "Bash(echo $PAYLOAD*)",
+      "Bash(echo $BLOB*)",
+      "Bash(printenv*)",
+      "Bash(env)",
+      "Bash(set)",
+      "Bash(Get-ChildItem Env:*)",
+      "Bash(vercel env pull*)",
+      "Bash(git add .env*)",
+      "Bash(git add -f .env*)"
+    ],
+    "allow": [
+      "Read(./.env.example)",
+      "Edit(./.env.example)"
+    ]
+  }
+}
