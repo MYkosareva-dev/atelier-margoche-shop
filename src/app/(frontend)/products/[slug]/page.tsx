@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Sparkles, Truck } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { BuySection } from '@/components/BuySection'
+import { CheckoutCancelledBanner } from '@/components/CheckoutCancelledBanner'
 import { KindBadge } from '@/components/KindBadge'
 import { Price } from '@/components/Price'
-import { SoldOutBadge } from '@/components/SoldOutBadge'
 import { imageFor } from '@/lib/media'
 import { getProductBySlug } from '@/lib/queries'
 
@@ -33,64 +34,48 @@ export default async function ProductPage({ params }: Props) {
   const img = imageFor(product.image, 'hero')
 
   return (
-    <article id="product" data-product-id={product.id} className="grid grid-cols-1 gap-8 md:grid-cols-[3fr_2fr] md:gap-12">
-      {img ? (
-        <Image
-          id="product-image"
-          src={img.url}
-          alt={img.alt}
-          width={img.width}
-          height={img.height}
-          sizes="(max-width: 768px) 100vw, 60vw"
-          priority
-          className="w-full rounded-[14px] object-cover"
-        />
-      ) : (
-        <div id="product-image" className="aspect-[4/5] w-full rounded-[14px] bg-[var(--surface-2)]" />
-      )}
-
-      <div id="product-details" className="self-start md:sticky md:top-24">
-        <KindBadge kind={product.kind} />
-        <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl">{product.title}</h1>
-        <p className="mt-4 text-[var(--text-muted)]">{product.shortDescription}</p>
-        {product.kind === 'ai-art' && (
-          <p id="ai-disclosure" className="mt-3 flex items-center gap-2 text-sm text-[var(--text-muted)]">
-            <Sparkles className="size-4 shrink-0" aria-hidden /> Created with generative AI tools and curated by the
-            artist.
-          </p>
-        )}
-        <Price cents={product.price} className="mt-6 text-2xl" suffixClassName="text-base" />
-        <p className="mt-1 flex items-center gap-2 text-sm text-[var(--text-muted)]">
-          <Truck className="size-4 shrink-0" aria-hidden /> Free shipping in Europe · Ships in 5–7 business days
-        </p>
-
-        {product.soldOut ? (
-          <div className="mt-8">
-            <SoldOutBadge id="sold-out" />
-            <p className="mt-3 text-sm text-[var(--text-muted)]">
-              This edition is gone. New prints are released regularly — see the catalogue.
-            </p>
-          </div>
+    <>
+      <Suspense fallback={null}>
+        <CheckoutCancelledBanner />
+      </Suspense>
+      <article id="product" data-product-id={product.id} className="grid grid-cols-1 gap-8 md:grid-cols-[3fr_2fr] md:gap-12">
+        {img ? (
+          <Image
+            id="product-image"
+            src={img.url}
+            alt={img.alt}
+            width={img.width}
+            height={img.height}
+            sizes="(max-width: 768px) 100vw, 60vw"
+            priority
+            className="w-full rounded-[14px] object-cover"
+          />
         ) : (
-          // Checkout is wired up in Phase 2 (SPEC Block D1); until then the button is inert.
-          <form id="buy-form" className="mt-8">
-            <Button
-              id="buy-now"
-              type="submit"
-              size="lg"
-              disabled
-              title="Checkout arrives in Phase 2"
-              className="btn-primary h-12 w-full rounded-[var(--radius)] bg-[image:var(--gradient)] px-6 font-semibold text-[var(--bg)] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-            >
-              Buy now
-            </Button>
-          </form>
+          <div id="product-image" className="aspect-[4/5] w-full rounded-[14px] bg-[var(--surface-2)]" />
         )}
 
-        <Link href="/" className="mt-4 flex w-fit items-center gap-2 text-sm">
-          <ArrowLeft className="size-4" aria-hidden /> Back to prints
-        </Link>
-      </div>
-    </article>
+        <div id="product-details" className="self-start md:sticky md:top-24">
+          <KindBadge kind={product.kind} />
+          <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl">{product.title}</h1>
+          <p className="mt-4 text-[var(--text-muted)]">{product.shortDescription}</p>
+          {product.kind === 'ai-art' && (
+            <p id="ai-disclosure" className="mt-3 flex items-center gap-2 text-sm text-[var(--text-muted)]">
+              <Sparkles className="size-4 shrink-0" aria-hidden /> Created with generative AI tools and curated by the
+              artist.
+            </p>
+          )}
+          <Price cents={product.price} className="mt-6 text-2xl" suffixClassName="text-base" />
+          <p className="mt-1 flex items-center gap-2 text-sm text-[var(--text-muted)]">
+            <Truck className="size-4 shrink-0" aria-hidden /> Free shipping in Europe · Ships in 5–7 business days
+          </p>
+
+          <BuySection productId={product.id} soldOut={Boolean(product.soldOut)} />
+
+          <Link href="/" className="mt-4 flex w-fit items-center gap-2 text-sm">
+            <ArrowLeft className="size-4" aria-hidden /> Back to prints
+          </Link>
+        </div>
+      </article>
+    </>
   )
 }
