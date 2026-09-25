@@ -1,6 +1,8 @@
 /**
  * Seeds 4 products and 4 pages (SPEC Block C). Run with `npm run seed`.
- * Idempotent: rows whose slug already exists are left untouched, so owner edits are never overwritten.
+ * Idempotent, keyed by slug. Products are upserted: an existing row gets the seed's title, price, kind,
+ * description and soldOut back (its image is kept, so no duplicate media). Pages that already exist are
+ * left untouched, so the owner's legal texts are never overwritten.
  */
 import fs from 'fs/promises'
 import path from 'path'
@@ -25,6 +27,7 @@ const PRODUCTS = [
       'Late-afternoon light over the Alfama rooftops. Giclée print on 200 g matte paper, A3.',
     alt: 'Late-afternoon light over Alfama rooftops',
     colors: ['#c9a24a', '#5a3d1e'],
+    soldOut: false,
   },
   {
     title: 'Nebula Bloom',
@@ -35,6 +38,7 @@ const PRODUCTS = [
       'A flower unfolding inside a nebula — generated, then hand-curated and color-graded. A3 giclée print.',
     alt: 'A luminous flower unfolding inside a violet nebula',
     colors: ['#7b5cff', '#1c1030'],
+    soldOut: false,
   },
   {
     title: 'Still Water, Bavaria',
@@ -44,6 +48,7 @@ const PRODUCTS = [
     shortDescription: 'Dawn mist on Eibsee. Giclée print on 200 g matte paper, A3.',
     alt: 'Dawn mist over the still surface of Lake Eibsee',
     colors: ['#6f8fa6', '#14202b'],
+    soldOut: false,
   },
   {
     title: 'Brass & Velvet',
@@ -54,6 +59,7 @@ const PRODUCTS = [
       'An imagined art-deco interior study. Generated with AI tools, curated by the artist. A2 giclée print.',
     alt: 'An imagined art-deco interior in brass and deep red velvet',
     colors: ['#b8862f', '#4a0f1f'],
+    soldOut: true, // fixture for the sold-out checks (US5, Block H #7)
   },
 ] as const
 
@@ -170,26 +176,23 @@ async function seed() {
   await fs.mkdir(IMAGES_DIR, { recursive: true })
 
   for (const p of PRODUCTS) {
+    const fields = {
+      title: p.title,
+      slug: p.slug,
+      price: p.price,
+      kind: p.kind,
+      shortDescription: p.shortDescription,
+      soldOut: p.soldOut,
+    }
     const existing = await payload.find({ collection: 'products', where: { slug: { equals: p.slug } }, limit: 1 })
     if (existing.docs.length) {
-      payload.logger.info(`Product "${p.slug}" exists — skipped`)
+      await payload.update({ collection: 'products', id: existing.docs[0].id, data: fields, context })
+      payload.logger.info(`Product "${p.slug}" updated`)
       continue
     }
     const filePath = (await findImageFor(p.slug)) ?? (await ensureImage(p.slug, p.colors))
     const media = await payload.create({ collection: 'media', data: { alt: p.alt }, filePath, context })
-    await payload.create({
-      collection: 'products',
-      data: {
-        title: p.title,
-        slug: p.slug,
-        price: p.price,
-        kind: p.kind,
-        shortDescription: p.shortDescription,
-        image: media.id,
-        soldOut: false,
-      },
-      context,
-    })
+    await payload.create({ collection: 'products', data: { ...fields, image: media.id }, context })
     payload.logger.info(`Product "${p.slug}" created`)
   }
 

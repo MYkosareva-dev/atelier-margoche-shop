@@ -46,14 +46,18 @@ test('POST /next/checkout rejects an invalid productId with 400 INVALID_BODY', a
 })
 
 test('sold-out product shows "Sold out" and checkout returns 409', async ({ page, request }) => {
+  // Seeded with soldOut: true (SPEC Block C seed table).
   await page.goto('/')
-  const card = page.locator('#catalogue .product-card[data-sold-out="true"]').first()
-  test.skip((await card.count()) === 0, 'Tick "Sold out" on one product in /admin to run this check.')
+  const card = page.locator('#catalogue .product-card[href="/products/brass-and-velvet"]')
+  await expect(card).toHaveAttribute('data-sold-out', 'true')
+  await expect(card.locator('.badge-soldout')).toHaveText('Sold out')
   const productId = await card.getAttribute('data-product-id')
+
   await card.click()
   await expect(page.locator('#sold-out')).toHaveText('Sold out')
   await expect(page.locator('#buy-now')).toHaveCount(0)
+
   const res = await request.post('/next/checkout', { data: { productId } })
   expect(res.status()).toBe(409)
-  expect((await res.json()).error.code).toBe('SOLD_OUT')
+  expect(await res.json()).toEqual({ error: { code: 'SOLD_OUT', message: 'Sorry, this print just sold out.' } })
 })

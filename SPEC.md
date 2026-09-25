@@ -548,14 +548,16 @@ export const Pages: CollectionConfig = {
 
 ### Seed data (4 products, 4 pages) — `src/seed.ts`, run once with `npm run seed`
 
-| title | slug | price (cents) | kind | shortDescription |
-|---|---|---|---|---|
-| Golden Hour, Lisbon | golden-hour-lisbon | 4900 | photo | Late-afternoon light over the Alfama rooftops. Giclée print on 200 g matte paper, A3. |
-| Nebula Bloom | nebula-bloom | 5900 | ai-art | A flower unfolding inside a nebula — generated, then hand-curated and color-graded. A3 giclée print. |
-| Still Water, Bavaria | still-water-bavaria | 4500 | photo | Dawn mist on Eibsee. Giclée print on 200 g matte paper, A3. |
-| Brass & Velvet | brass-and-velvet | 6900 | ai-art | An imagined art-deco interior study. Generated with AI tools, curated by the artist. A2 giclée print. |
+| title | slug | price (cents) | kind | soldOut | shortDescription |
+|---|---|---|---|---|---|
+| Golden Hour, Lisbon | golden-hour-lisbon | 4900 | photo | false | Late-afternoon light over the Alfama rooftops. Giclée print on 200 g matte paper, A3. |
+| Nebula Bloom | nebula-bloom | 5900 | ai-art | false | A flower unfolding inside a nebula — generated, then hand-curated and color-graded. A3 giclée print. |
+| Still Water, Bavaria | still-water-bavaria | 4500 | photo | false | Dawn mist on Eibsee. Giclée print on 200 g matte paper, A3. |
+| Brass & Velvet | brass-and-velvet | 6900 | ai-art | true | An imagined art-deco interior study. Generated with AI tools, curated by the artist. A2 giclée print. |
 
 Pages: `about` ("About the atelier"), `impressum` ("Impressum"), `privacy` ("Privacy Policy"), `terms` ("Terms & Returns"). Seed content is placeholder legal text clearly marked "Draft — replace before taking real payments"; images for seeding are the four files in `seed/images/`.
+
+> Decision: "Brass & Velvet" is seeded with `soldOut: true` so the sold-out checks (US5, Block H #7 e2e) run against a freshly seeded database without manual admin steps. The seed upserts products by slug: re-running it restores the table values above (title, price, kind, soldOut, shortDescription) on existing rows, keeps their image and never creates duplicates. Pages that already exist are left untouched.
 
 ---
 
@@ -821,7 +823,7 @@ export async function POST(req: Request) {
 
 > Decision: The checkout route implements Rules B4 and B14 around the D1 code above. A failed first `orders` insert is retried once with sequence + 1, and a second failure returns 500 `INTERNAL`. Any exception after the order row exists (including the session-binding update) sets the order to `cancelled` and returns 500 `INTERNAL`; a Stripe failure returns 502 as above. `product_data.images` is sent only when the image URL is `https://` (Vercel Blob). Local-disk uploads in development have a relative URL, which Stripe would reject.
 
-> Decision: Besides the admin guard, the Orders `beforeChange` hook throws on any status change away from `paid` or `cancelled`, for server calls too, so Rule B3's terminal states are enforced in one place rather than only by the callers' `status` checks.
+> Decision: Besides the admin guard, the Orders `beforeChange` hook throws on any status change away from `paid` or `cancelled`, for server calls too, so Rule B3's terminal states are enforced in one place rather than only by the callers' `status` checks. The webhook never reaches that throw: any event for an order that is not `pending` (a replay, or a late event for a `paid`/`cancelled` order) is answered 200 `{ "received": true }` with one `console.warn` line (`order <id> already <status>, event <id> ignored`) and no write. A 500 here would make Stripe retry for 3 days with no chance of succeeding.
 
 ### D3 — Payload REST API `/api/*`
 

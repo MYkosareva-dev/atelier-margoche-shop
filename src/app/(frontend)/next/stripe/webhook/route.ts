@@ -39,8 +39,14 @@ export async function POST(req: Request) {
     order = found.docs[0]
     if (!order) return err(404, 'ORDER_NOT_FOUND', 'No order matches this Checkout Session.')
 
+    // paid and cancelled are terminal (Rule B3). Replays (G13) and late events are acknowledged, not
+    // retried: a non-2xx here would make Stripe retry for 3 days with no chance of succeeding.
+    if (order.status !== 'pending') {
+      console.warn(`order ${order.id} already ${order.status}, event ${event.id} ignored`)
+      return NextResponse.json({ received: true })
+    }
+
     if (event.type === 'checkout.session.completed') {
-      if (order.status === 'paid') return NextResponse.json({ received: true }) // idempotent (G13)
       if (session.payment_status !== 'paid') return NextResponse.json({ received: true }) // card-only → always 'paid' here; guard anyway
       // Newer API versions moved shipping to collected_information; older ones kept session.shipping_details.
       const ship =
@@ -71,8 +77,8 @@ export async function POST(req: Request) {
             : undefined,
         },
       })
-    } else if (order.status === 'pending') {
-      // checkout.session.expired: pending → cancelled; paid and cancelled are terminal (Rule B3).
+    } else {
+      // checkout.session.expired: pending → cancelled.
       await payload.update({ collection: 'orders', id: order.id, overrideAccess: true, data: { status: 'cancelled' } })
     }
   } catch {

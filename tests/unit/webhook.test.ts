@@ -127,13 +127,23 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
     expect(payloadMock.find).not.toHaveBeenCalled()
   })
 
-  it('does not write again for a duplicate event on an already-paid order', async () => {
-    payloadMock.find.mockResolvedValue({ docs: [{ ...pendingOrder, status: 'paid' }] })
+  it.each([
+    ['checkout.session.completed', 'paid'],
+    ['checkout.session.completed', 'cancelled'],
+    ['checkout.session.expired', 'paid'],
+    ['checkout.session.expired', 'cancelled'],
+  ])('acknowledges %s for an already-%s order with 200 and no write', async (type, status) => {
+    payloadMock.find.mockResolvedValue({ docs: [{ ...pendingOrder, status }] })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const res = await POST(signedRequest(event('checkout.session.completed')))
+    const res = await POST(signedRequest(event(type)))
 
     expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ received: true })
     expect(payloadMock.update).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(`order ${ORDER_ID} already ${status}, event evt_1Q9xYzAbCdEfGhIj ignored`)
+    warn.mockRestore()
   })
 
   it('moves a pending order to cancelled on checkout.session.expired', async () => {
@@ -146,15 +156,6 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
       overrideAccess: true,
       data: { status: 'cancelled' },
     })
-  })
-
-  it('never changes a paid order on checkout.session.expired', async () => {
-    payloadMock.find.mockResolvedValue({ docs: [{ ...pendingOrder, status: 'paid' }] })
-
-    const res = await POST(signedRequest(event('checkout.session.expired')))
-
-    expect(res.status).toBe(200)
-    expect(payloadMock.update).not.toHaveBeenCalled()
   })
 
   it('returns 404 ORDER_NOT_FOUND for an unknown session', async () => {
