@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
-import { stripe } from '@/lib/stripe'
+import { STRIPE_WEBHOOK_SECRET, stripe } from '@/lib/stripe'
 import { getPayload } from '@/lib/payload'
 
 export const runtime = 'nodejs'
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const raw = await req.text() // raw body: the signature is computed over the exact bytes
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(raw, sig ?? '', process.env.STRIPE_WEBHOOK_SECRET!)
+    event = stripe.webhooks.constructEvent(raw, sig ?? '', STRIPE_WEBHOOK_SECRET)
   } catch {
     // Rule B7 / G12: nothing is read or written before the signature verifies.
     return err(400, 'INVALID_SIGNATURE', 'Webhook signature verification failed.')
@@ -42,7 +42,13 @@ export async function POST(req: Request) {
     // paid and cancelled are terminal (Rule B3). Replays (G13) and late events are acknowledged, not
     // retried: a non-2xx here would make Stripe retry for 3 days with no chance of succeeding.
     if (order.status !== 'pending') {
-      console.warn(`order ${order.id} already ${order.status}, event ${event.id} ignored`)
+      if (event.type === 'checkout.session.completed' && order.status === 'cancelled') {
+        // The customer paid for an order the shop already treats as dead: the owner must refund it in Stripe.
+        const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id
+        console.error(`paid checkout for cancelled order ${order.id}, payment_intent ${pi ?? 'none'}: refund in Stripe`)
+      } else {
+        console.warn(`order ${order.id} already ${order.status}, event ${event.id} ignored`)
+      }
       return NextResponse.json({ received: true })
     }
 
@@ -82,7 +88,8 @@ export async function POST(req: Request) {
       // checkout.session.expired: pending → cancelled.
       await payload.update({ collection: 'orders', id: order.id, overrideAccess: true, depth: 0, data: { status: 'cancelled' } })
     }
-  } catch {
+  } catch (e) {
+    console.error('webhook processing failed:', e instanceof Error ? e.message : String(e))
     return err(500, 'INTERNAL', 'Webhook processing failed.')
   }
   return NextResponse.json({ received: true })

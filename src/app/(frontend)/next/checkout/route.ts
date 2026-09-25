@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
+import { NotFound } from 'payload'
 import { z } from 'zod'
 
 import { getPayload } from '@/lib/payload'
@@ -37,7 +38,11 @@ export async function POST(req: Request) {
     payload = await getPayload()
     const product = await payload
       .findByID({ collection: 'products', id: parsed.data.productId, depth: 1 })
-      .catch(() => null)
+      .catch((e: unknown) => {
+        // Only a real not-found is a 404; a database failure falls through to 500 below.
+        if (e instanceof NotFound) return null
+        throw e
+      })
     if (!product) return err(404, 'PRODUCT_NOT_FOUND', 'This product does not exist.')
     // Rule B5: checked here, server-side; no order row is created for a sold-out product.
     if (product.soldOut) return err(409, 'SOLD_OUT', 'Sorry, this print just sold out.')
@@ -99,7 +104,9 @@ export async function POST(req: Request) {
 
     if (!session.url) throw new Error('Checkout Session has no URL')
     return NextResponse.json({ url: session.url })
-  } catch {
+  } catch (e) {
+    // Message only: never log the error object, which may carry request or connection details.
+    console.error('checkout failed:', e instanceof Error ? e.message : String(e))
     // Rule B14: any failure after the DB write rolls the order to cancelled.
     if (payload && orderId) await cancelOrder(payload, orderId)
     return internal()
