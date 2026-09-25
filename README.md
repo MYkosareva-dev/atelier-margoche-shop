@@ -80,7 +80,7 @@ Use the Supabase **Session pooler** URI (port 5432) locally and the **Transactio
 - Second collection: Pages
 - Written go-live plan — [docs/GO-LIVE-PLAN.md](docs/GO-LIVE-PLAN.md)
 
-Planned: cart, per-product mockup image, digital downloads.
+Planned: cart, per-product mockup image, digital downloads; from the code review: webhook order lookup by `metadata.orderId`, expiring the Stripe session on checkout rollback, a shared rate limiter, checkout-route unit tests, a field-level lock on Stripe-sourced Orders fields, and image/caching tuning (AVIF, `preload`, longer `revalidate`, Toaster only on product pages).
 
 ## Test cards
 

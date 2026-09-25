@@ -36,7 +36,7 @@
 |---|---|---|
 | Framework | Next.js App Router + TypeScript, version installed by `npx create-payload-app@latest` (blank template) | Do not upgrade or downgrade Next.js independently of Payload. |
 | CMS | Payload 3.x, installed inside the Next.js app | Collections are defined in code; schema is managed by Payload migrations. |
-| Database | Supabase Postgres, ONE project, via `@payloadcms/db-postgres` | Connection string = Supabase **Session pooler** URI (IPv4, port 5432). Vercel cannot reach the IPv6 direct connection. |
+| Database | Supabase Postgres, ONE project, via `@payloadcms/db-postgres` | Connection string = a Supabase pooler URI (both IPv4): **Session pooler** (port 5432) locally, **Transaction pooler** (port 6543) on Vercel (see Decision below). Vercel cannot reach the IPv6 direct connection. |
 | File storage | Vercel Blob via `@payloadcms/storage-vercel-blob` | Vercel's filesystem is read-only at runtime; local disk uploads are forbidden in production. |
 | Payments | Stripe hosted Checkout, `mode: 'payment'`, card only | Test keys only (`sk_test_…`). Currency: **EUR**. Money stored as INTEGER cents. |
 | Styling | Tailwind CSS v4 + shadcn/ui, dark theme | Design polish is a later phase; Block E defines v1 layout and tokens. |
@@ -1229,3 +1229,14 @@ Shop operator is based in Germany, ships to Europe. This section lists what the 
 10. **Docs.** `README.md` is concise (under 120 lines) with these sections in order: (1) title, one-line pitch, live URL, catalogue screenshot · (2) How it works: live admin edits without redeploy, Stripe hosted Checkout in sandbox, paid only via the signature-verified webhook, declined cards leave the order `pending`; screenshots of the paid order, the admin Orders list and the declined checkout · (3) Owner guide: `/admin`, Products (fields, sold-out toggle), Pages, Media → Vercel Blob, Orders view, reviewer-access note (Block A Roles) · (4) Run locally: one code block (`cp .env.example .env`, `npm install`, `npm run migrate`, `npm run seed`, `npm run dev`), first admin at `/admin`, `stripe listen --events … --forward-to …` · (5) Environment variables: table of name and where to get it (no secrets), Session pooler locally and Transaction pooler on Vercel · (6) Deployment: Vercel from the repository, build `npm run ci`, Blob store and Stripe webhook at `/next/stripe/webhook` · (7) Optional tasks delivered (Orders collection, Order confirmation page, Sold-out state, Second collection: Pages, Written go-live plan → `docs/GO-LIVE-PLAN.md`) plus one "Planned:" line · (8) Test cards · (9) Stack, noting the Payload skills and Stripe plugin used while building. No badges, no table of contents. `docs/GO-LIVE-PLAN.md` covers: Stripe account activation, key swap with new env values, live webhook endpoint + new signing secret, VAT/OSS registration note for cross-border EU sales, replacing draft legal texts, removing the `sk_test_` boot guard deliberately as the last step. `CLAUDE.md` (stage 2) opens with the plain-language description of the shop and states that it needs both a CMS and a payment.
 
 > Decision: The README follows the nine-section structure above instead of the original list ("What the shop sells" … "Future extensions"). The owner chose a shorter README with screenshots; future work is a single "Planned:" line rather than a section.
+
+### Deferred from review
+
+Found in the full review of `main` (2026-09-25) and deliberately left for later; none blocks the sandbox hand-in.
+
+- Webhook looks the order up by `metadata.orderId` (primary key) instead of `stripeSessionId`, and answers 200 "ignored" for sessions that are not ours (refines G11).
+- Checkout rollback also expires the open Stripe session (`stripe.checkout.sessions.expire`, best effort).
+- Shared rate limiter (e.g. Upstash / Vercel KV) instead of the per-instance in-memory map, with expired buckets pruned.
+- Unit tests for `/next/checkout` (404, 409 without an order row, 429, 502 and 500 with the order cancelled, orderNumber retry, idempotency key).
+- Field-level `access.update: () => false` on Stripe-sourced Orders fields (`total`, `stripeSessionId`, `customerEmail`, …), so a REST `PATCH` cannot change them.
+- Images and caching: AVIF in `images.formats`, `preload` on the first card only instead of `priority`, safety-net `revalidate` raised from 60 to 3600, `<Toaster/>` mounted only on product pages.
