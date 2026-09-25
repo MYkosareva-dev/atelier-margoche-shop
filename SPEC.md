@@ -819,6 +819,10 @@ export async function POST(req: Request) {
 
 > Decision: Stripe's API moved the shipping address from `session.shipping_details` to `session.collected_information.shipping_details` in 2025 API versions. The handler reads the new location first and falls back to the old one so it works regardless of the account's pinned API version.
 
+> Decision: The checkout route implements Rules B4 and B14 around the D1 code above. A failed first `orders` insert is retried once with sequence + 1, and a second failure returns 500 `INTERNAL`. Any exception after the order row exists (including the session-binding update) sets the order to `cancelled` and returns 500 `INTERNAL`; a Stripe failure returns 502 as above. `product_data.images` is sent only when the image URL is `https://` (Vercel Blob). Local-disk uploads in development have a relative URL, which Stripe would reject.
+
+> Decision: Besides the admin guard, the Orders `beforeChange` hook throws on any status change away from `paid` or `cancelled`, for server calls too, so Rule B3's terminal states are enforced in one place rather than only by the callers' `status` checks.
+
 ### D3 — Payload REST API `/api/*`
 
 Used only by the admin UI. Public reads of `products`, `media`, `pages` are allowed by the access rules; everything else requires the admin cookie. No custom endpoints are added to it. Public pages use the Local API (`payload.find`) in Server Components, never `fetch('/api/…')`.
@@ -991,6 +995,12 @@ Server component loads the order by UUID; **if `order.stripeSessionId !== sessio
 | Loading | No skeleton — single query, real 404 required. |
 | Empty / not found | UUID unknown or `session_id` mismatch → `not-found.tsx` (copy as Screen 2). |
 | Error | `error.tsx` (same as Screen 1) with h2 "We couldn't load your order". |
+
+> Decision: The `#checkout-cancelled` banner reads `?checkout=cancelled` on the client (`useSearchParams` inside `<Suspense>`), so `/products/[slug]` stays cached with `revalidate = 60`. Reading `searchParams` on the server would make every product page dynamic. On a 409 the Buy now component switches to the sold-out state at once and calls `router.refresh()`.
+
+> Decision: The 30-second boundary between the two `pending` copies on Screen 3 is measured from when the page is opened, not from `order.createdAt`, because the customer may spend minutes on Stripe's page before arriving. `OrderStatusPoller` renders the pending heading and body. The ≤30 s state includes items and total; the >30 s state shows only the copy in the table.
+
+> Decision: US5 step 2 mentions a "disabled, greyed button" on the catalogue card, but Screen 1's card markup has no button and the whole card is a link (a button inside a link is invalid HTML). The card therefore shows the "Sold out" badge and a greyed image (`grayscale opacity-70`), as Screen 1 specifies.
 
 ### Screen 4 — `/info/[slug]` Static page
 
