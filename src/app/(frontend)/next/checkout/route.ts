@@ -11,6 +11,10 @@ export const runtime = 'nodejs'
 
 type Payload = Awaited<ReturnType<typeof getPayload>>
 
+// Fail fast: without it success_url/cancel_url are invalid and every checkout would 502.
+if (!process.env.NEXT_PUBLIC_SERVER_URL) throw new Error('NEXT_PUBLIC_SERVER_URL is not set')
+const BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL
+
 const Body = z.object({ productId: z.string().uuid() })
 
 const err = (status: number, code: string, message: string) =>
@@ -39,7 +43,6 @@ export async function POST(req: Request) {
     if (product.soldOut) return err(409, 'SOLD_OUT', 'Sorry, this print just sold out.')
     if (!Number.isInteger(product.price) || product.price < 100) return internal()
 
-    const base = process.env.NEXT_PUBLIC_SERVER_URL!
     // Stripe needs a public https URL; local-disk uploads in dev (/api/media/file/…) are simply omitted.
     const imageUrl = typeof product.image === 'object' ? product.image?.url : undefined
     const image = imageUrl?.startsWith('https://') ? [imageUrl] : []
@@ -71,13 +74,16 @@ export async function POST(req: Request) {
           shipping_address_collection: { allowed_countries: [...EUROPE_COUNTRIES] },
           metadata: { orderId: order.id, orderNumber: order.orderNumber },
           client_reference_id: order.id,
-          success_url: `${base}/order/${order.id}?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${base}/products/${product.slug}?checkout=cancelled`,
+          success_url: `${BASE_URL}/order/${order.id}?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${BASE_URL}/products/${product.slug}?checkout=cancelled`,
           expires_at: Math.floor(Date.now() / 1000) + 60 * 60, // 1 h; minimum Stripe allows is 30 min
         },
         { idempotencyKey: `order-${order.id}`, timeout: 10_000 },
       )
-    } catch {
+    } catch (e) {
+      // Only message/code/param: Stripe error messages never contain the API key.
+      const stripeErr = e as { message?: string; code?: string; param?: string } | undefined
+      console.error('stripe.checkout.sessions.create failed:', stripeErr?.message, stripeErr?.code, stripeErr?.param)
       await cancelOrder(payload, order.id)
       return err(502, 'STRIPE_UNAVAILABLE', 'Checkout is temporarily unavailable. Please try again in a moment.')
     }
