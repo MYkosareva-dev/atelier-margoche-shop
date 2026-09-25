@@ -93,6 +93,7 @@ export async function POST(req: Request) {
       collection: 'orders',
       id: order.id,
       overrideAccess: true,
+      depth: 0,
       data: { stripeSessionId: session.id },
     })
 
@@ -116,6 +117,7 @@ async function createPendingOrder(payload: Payload, data: NewOrder) {
     payload.create({
       collection: 'orders',
       overrideAccess: true,
+      depth: 0, // only id/orderNumber are used; skip re-populating the product and its image
       data: {
         orderNumber: await nextOrderNumber(payload, offset),
         status: 'pending',
@@ -144,6 +146,6 @@ async function nextOrderNumber(payload: Payload, offset: number): Promise<string
 
 async function cancelOrder(payload: Payload, id: string) {
   await payload
-    .update({ collection: 'orders', id, overrideAccess: true, data: { status: 'cancelled' } })
+    .update({ collection: 'orders', id, overrideAccess: true, depth: 0, data: { status: 'cancelled' } })
     .catch(() => undefined)
 }

@@ -78,6 +78,7 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
       collection: 'orders',
       id: ORDER_ID,
       overrideAccess: true,
+      depth: 0,
       data: {
         status: 'paid',
         paidAt: new Date(1_790_000_000 * 1000).toISOString(),
@@ -154,6 +155,7 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
       collection: 'orders',
       id: ORDER_ID,
       overrideAccess: true,
+      depth: 0,
       data: { status: 'cancelled' },
     })
   })

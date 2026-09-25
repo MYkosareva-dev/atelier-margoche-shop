@@ -57,6 +57,7 @@ export async function POST(req: Request) {
         collection: 'orders',
         id: order.id,
         overrideAccess: true,
+        depth: 0, // the returned doc is unused
         data: {
           status: 'paid',
           paidAt: new Date(event.created * 1000).toISOString(),
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       })
     } else {
       // checkout.session.expired: pending → cancelled.
-      await payload.update({ collection: 'orders', id: order.id, overrideAccess: true, data: { status: 'cancelled' } })
+      await payload.update({ collection: 'orders', id: order.id, overrideAccess: true, depth: 0, data: { status: 'cancelled' } })
     }
   } catch {
     return err(500, 'INTERNAL', 'Webhook processing failed.')
