@@ -1,67 +1,90 @@
-# Payload Blank Template
+# Atelier Margoche
 
-This template comes configured with the bare minimum to get started on anything you need.
+A small online shop for art prints — photographs and AI-generated artworks — with an owner-editable catalogue and Stripe checkout.
 
-## Quick start
+**Live:** https://atelier-margoche-shop.vercel.app
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
-
-## Quick Start - local setup
-
-To spin up this template locally, follow these steps:
-
-### Clone
-
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
-
-### Development
-
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
-
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
-
-That's it! Changes made in `./src` will be reflected in your app. Follow the on-screen instructions to login and create your first admin user. Then check out [Production](#production) once you're ready to build and serve your app, and [Deployment](#deployment) when you're ready to go live.
-
-#### Docker (Optional)
-
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
-
-To do so, follow these steps:
-
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+![Catalogue](docs/screenshots/catalogue.png)
 
 ## How it works
 
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
+- The owner edits products and pages in the Payload admin; changes go live within a minute, with no redeploy.
+- "Buy now" opens Stripe's hosted Checkout in sandbox (test) mode — no real money moves.
+- An order is marked paid only by the Stripe webhook, after its signature is verified — never by the thank-you page.
+- A declined card leaves the order `pending`; nothing is marked paid.
 
-### Collections
+<p>
+  <img src="docs/screenshots/order-paid.png" alt="Order confirmation showing Paid" width="49%">
+  <img src="docs/screenshots/admin-orders.png" alt="Admin Orders list" width="49%">
+</p>
 
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
+![Declined checkout](docs/screenshots/stripe-declined.png)
 
-- #### Users (Authentication)
+*Card 4000 0000 0000 0002 is declined on Stripe's page; the order stays `pending`.*
 
-  Users are auth-enabled collections that have access to the admin panel.
+## Owner guide
 
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/3.x/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
+Log in at [/admin](https://atelier-margoche-shop.vercel.app/admin) with email and password.
 
-- #### Media
+- **Products** — title, slug, price (in cents), short description, image, kind (Photo / AI art). Tick **Sold out** and the product page shows "Sold out" instead of Buy now; the catalogue card gets a badge.
+- **Pages** — About, Impressum, Privacy, Terms & Returns: title, slug, rich-text content. The four legal pages can be edited but not deleted.
+- **Media** — uploaded images are stored in Vercel Blob (JPEG, PNG or WebP, up to 8 MB).
+- **Orders** — every checkout with status (`pending`, `paid`, `cancelled`), items, total, customer email and shipping address; the owner can add a note. Orders are created by the server only.
 
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
+Reviewers need no credentials: the demo runs on a screen-shared call, and if admin access is requested the owner creates a temporary `reviewer@…` user and deletes it afterwards.
 
-### Docker
+## Run locally
 
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
+Requires Node ≥ 20 and the [Stripe CLI](https://docs.stripe.com/stripe-cli).
 
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
+```bash
+cp .env.example .env      # then fill in the values (see below)
+npm install
+npm run migrate
+npm run seed
+npm run dev               # http://localhost:3000
+```
 
-That's it! The Docker instance will help you get up and running quickly while also standardizing the development environment across your teams.
+On first start, open http://localhost:3000/admin and create the first admin user.
 
-## Questions
+```bash
+stripe listen --events checkout.session.completed,checkout.session.expired --forward-to localhost:3000/next/stripe/webhook
+```
 
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+## Environment variables
+
+| Name | Where to get it |
+|---|---|
+| `DATABASE_URI` | Supabase → Project Settings → Database → Connection string (URI) |
+| `PAYLOAD_SECRET` | Any 32+ random characters, e.g. `openssl rand -hex 32` |
+| `NEXT_PUBLIC_SERVER_URL` | `http://localhost:3000` locally; `https://atelier-margoche-shop.vercel.app` on Vercel |
+| `STRIPE_SECRET_KEY` | Stripe Dashboard (Test mode) → Developers → API keys → Secret key (`sk_test_…`) |
+| `STRIPE_WEBHOOK_SECRET` | Locally: printed by `stripe listen`. Vercel: Developers → Webhooks → endpoint → Signing secret (`whsec_…`) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel → Storage → Blob store (injected automatically when linked). Leave empty locally: uploads go to `media/` |
+
+Use the Supabase **Session pooler** URI (port 5432) locally and the **Transaction pooler** URI (port 6543) on Vercel. The app refuses to start unless the Stripe key starts with `sk_test_`.
+
+## Deployment
+
+- Vercel project connected to this GitHub repository; env variables set for Production and Preview.
+- Build command `npm run ci` (`payload migrate && next build`), so migrations apply on every deploy.
+- A Vercel Blob store is linked to the project, and a Stripe webhook endpoint points at `https://atelier-margoche-shop.vercel.app/next/stripe/webhook` (events `checkout.session.completed`, `checkout.session.expired`).
+
+## Optional tasks delivered
+
+- Orders collection
+- Order confirmation page (`/order/[orderId]`)
+- Sold-out state
+- Second collection: Pages
+- Written go-live plan — [docs/GO-LIVE-PLAN.md](docs/GO-LIVE-PLAN.md)
+
+Planned: cart, per-product mockup image, digital downloads.
+
+## Test cards
+
+Success: `4242 4242 4242 4242` · Decline: `4000 0000 0000 0002`.
+Any future expiry date, any CVC, any postcode.
+
+## Stack
+
+Next.js (App Router, TypeScript) · Payload 3 · Supabase Postgres · Vercel Blob · Stripe Checkout · Tailwind v4 + shadcn/ui · Zod · Vitest + Playwright · Vercel — built with the Payload skills and the Stripe Claude Code plugin installed beforehand.

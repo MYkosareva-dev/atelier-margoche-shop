@@ -39,6 +39,19 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '*.vercel.app', pathname: '/api/media/**' },
     ],
   },
+  // SPEC Block F §Security: public routes only; /admin and /api keep Payload's defaults.
+  async headers() {
+    return [
+      {
+        source: '/((?!admin|api).*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
+    ]
+  },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],
