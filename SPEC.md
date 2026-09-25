@@ -53,6 +53,8 @@
 
 > Decision: Database row: the `pg` pool is capped at `max: 3` with `idleTimeoutMillis: 10_000`. Supabase's Session pooler allows 15 clients for the whole project, and each client holds its slot for the life of the connection. With the default pool of 10, one build (several prerender workers) or a few warm Vercel instances used up every slot and the build failed with `EMAXCONNSESSION` "max clients reached". Three connections per instance or build worker is plenty for a single-owner shop, and idle ones are released after 10 seconds.
 
+> Decision: Database row: two Supabase pooler modes are used. Locally `DATABASE_URI` is the Session pooler URI (port 5432), which keeps a real session and suits `payload migrate`, `npm run seed` and a long-running dev server. On Vercel (Production and Preview) it is the Transaction pooler URI (port 6543): a client holds a server connection only for the length of one transaction, so short-lived serverless instances and parallel build workers no longer compete for the Session pooler's 15 slots. Both are IPv4, so Vercel can reach either. The `max: 3` pool cap stays as a second guard.
+
 > Decision: Schema is owned by Payload (Drizzle migrations), not hand-written SQL. Row-level security is not used: the database is reached only by the server through Payload with a single connection; authorization is Payload access control (Block C). Supabase RLS policies would never be evaluated and are therefore omitted.
 
 > Decision: Free shipping across Europe, prices shown "incl. VAT". Removes shipping-rate logic and satisfies German price-transparency rules in one line.
@@ -1099,7 +1101,7 @@ Images use `next/image` with `sizes="(max-width: 768px) 100vw, 33vw"` on cards a
 Environment variables (`.env.example`):
 
 ```bash
-DATABASE_URI=            # Supabase → Project Settings → Database → Connection string → "Session pooler" (URI). Port 5432.
+DATABASE_URI=            # Supabase → Project Settings → Database → Connection string (URI). Locally: "Session pooler", port 5432. On Vercel: "Transaction pooler", port 6543.
 PAYLOAD_SECRET=          # any 32+ random chars: `openssl rand -hex 32` (Git Bash) or `[guid]::NewGuid()` twice in PowerShell
 NEXT_PUBLIC_SERVER_URL=  # http://localhost:3000 locally; https://<project>.vercel.app on Vercel
 STRIPE_SECRET_KEY=       # Stripe Dashboard (Test mode ON) → Developers → API keys → Secret key, starts with sk_test_
