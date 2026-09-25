@@ -18,6 +18,8 @@ function serverHostname(): string | null {
 const appHostname = serverHostname()
 
 const nextConfig: NextConfig = {
+  // Don't advertise the stack; withPayload also drops its own "Next.js, Payload" header when this is false.
+  poweredByHeader: false,
   images: {
     // Next 16's optimizer refuses upstream hosts that resolve to a private IP (SSRF guard), so it cannot
     // fetch http://localhost:3000/api/media/… in dev. Serve images as-is locally; production optimizes Blob URLs.
@@ -39,7 +41,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '*.vercel.app', pathname: '/api/media/**' },
     ],
   },
-  // SPEC Block F §Security: public routes only; /admin and /api keep Payload's defaults.
+  // SPEC Block F §Security: public routes get the full set; /admin only adds anti-framing (SAMEORIGIN, since
+  // Payload's admin may frame its own pages); /api keeps Payload's defaults.
   async headers() {
     return [
       {
@@ -49,6 +52,10 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'DENY' },
         ],
+      },
+      {
+        source: '/admin/:path*',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }],
       },
     ]
   },

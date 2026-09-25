@@ -1,12 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-import 'dotenv/config'
-
-// Point the suite at another server with PLAYWRIGHT_BASE_URL; tests rely only on `npm run seed` data.
+// No .env loading: the suite only needs PLAYWRIGHT_BASE_URL. Point it at another server with that variable;
+// tests rely only on `npm run seed` data.
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
 
 /**

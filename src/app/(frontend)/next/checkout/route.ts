@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
+import { NotFound } from 'payload'
 import { z } from 'zod'
 
 import { getPayload } from '@/lib/payload'
@@ -37,7 +38,11 @@ export async function POST(req: Request) {
     payload = await getPayload()
     const product = await payload
       .findByID({ collection: 'products', id: parsed.data.productId, depth: 1 })
-      .catch(() => null)
+      .catch((e: unknown) => {
+        // Only a real not-found is a 404; a database failure falls through to 500 below.
+        if (e instanceof NotFound) return null
+        throw e
+      })
     if (!product) return err(404, 'PRODUCT_NOT_FOUND', 'This product does not exist.')
     // Rule B5: checked here, server-side; no order row is created for a sold-out product.
     if (product.soldOut) return err(409, 'SOLD_OUT', 'Sorry, this print just sold out.')
@@ -93,12 +98,15 @@ export async function POST(req: Request) {
       collection: 'orders',
       id: order.id,
       overrideAccess: true,
+      depth: 0,
       data: { stripeSessionId: session.id },
     })
 
     if (!session.url) throw new Error('Checkout Session has no URL')
     return NextResponse.json({ url: session.url })
-  } catch {
+  } catch (e) {
+    // Message only: never log the error object, which may carry request or connection details.
+    console.error('checkout failed:', e instanceof Error ? e.message : String(e))
     // Rule B14: any failure after the DB write rolls the order to cancelled.
     if (payload && orderId) await cancelOrder(payload, orderId)
     return internal()
@@ -116,6 +124,7 @@ async function createPendingOrder(payload: Payload, data: NewOrder) {
     payload.create({
       collection: 'orders',
       overrideAccess: true,
+      depth: 0, // only id/orderNumber are used; skip re-populating the product and its image
       data: {
         orderNumber: await nextOrderNumber(payload, offset),
         status: 'pending',
@@ -144,6 +153,6 @@ async function nextOrderNumber(payload: Payload, offset: number): Promise<string
 
 async function cancelOrder(payload: Payload, id: string) {
   await payload
-    .update({ collection: 'orders', id, overrideAccess: true, data: { status: 'cancelled' } })
+    .update({ collection: 'orders', id, overrideAccess: true, depth: 0, data: { status: 'cancelled' } })
     .catch(() => undefined)
 }

@@ -36,7 +36,7 @@
 |---|---|---|
 | Framework | Next.js App Router + TypeScript, version installed by `npx create-payload-app@latest` (blank template) | Do not upgrade or downgrade Next.js independently of Payload. |
 | CMS | Payload 3.x, installed inside the Next.js app | Collections are defined in code; schema is managed by Payload migrations. |
-| Database | Supabase Postgres, ONE project, via `@payloadcms/db-postgres` | Connection string = Supabase **Session pooler** URI (IPv4, port 5432). Vercel cannot reach the IPv6 direct connection. |
+| Database | Supabase Postgres, ONE project, via `@payloadcms/db-postgres` | Connection string = a Supabase pooler URI (both IPv4): **Session pooler** (port 5432) locally, **Transaction pooler** (port 6543) on Vercel (see Decision below). Vercel cannot reach the IPv6 direct connection. |
 | File storage | Vercel Blob via `@payloadcms/storage-vercel-blob` | Vercel's filesystem is read-only at runtime; local disk uploads are forbidden in production. |
 | Payments | Stripe hosted Checkout, `mode: 'payment'`, card only | Test keys only (`sk_test_…`). Currency: **EUR**. Money stored as INTEGER cents. |
 | Styling | Tailwind CSS v4 + shadcn/ui, dark theme | Design polish is a later phase; Block E defines v1 layout and tokens. |
@@ -44,7 +44,7 @@
 | Validation | Zod | Server-side on both custom routes. |
 | Tests | Vitest (unit) + Playwright (smoke e2e) | See Block H. |
 | Package manager | npm | Developer is on Windows with Node 24 / npm 12. |
-| Deploy | Vercel, connected to the developer's personal GitHub repository; pushed to the school repository at hand-in | Build command runs migrations then `next build`. |
+| Deploy | Vercel, connected to the developer's personal GitHub repository; pushed to the school repository at hand-in | Build command `npm run ci`: runs migrations then `next build` on Production, only `next build` on Preview. |
 | Prohibited | Committing any `.env*` file; storing uploads on local disk in production; marking an order paid anywhere except the verified webhook handler; live Stripe keys (`sk_live_`, `pk_live_`); a shopping cart in v1; customer accounts; analytics or tracking scripts; Supabase Auth or Supabase client SDK (Payload is the only DB client). | |
 
 > Decision: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is not used. Hosted Checkout redirects the browser to `session.url` returned by the server; no Stripe.js runs in the browser. The publishable key may be set in Vercel for completeness but nothing reads it.
@@ -54,6 +54,10 @@
 > Decision: Database row: the `pg` pool is capped at `max: 3` with `idleTimeoutMillis: 10_000`. Supabase's Session pooler allows 15 clients for the whole project, and each client holds its slot for the life of the connection. With the default pool of 10, one build (several prerender workers) or a few warm Vercel instances used up every slot and the build failed with `EMAXCONNSESSION` "max clients reached". Three connections per instance or build worker is plenty for a single-owner shop, and idle ones are released after 10 seconds.
 
 > Decision: Database row: two Supabase pooler modes are used. Locally `DATABASE_URI` is the Session pooler URI (port 5432), which keeps a real session and suits `payload migrate`, `npm run seed` and a long-running dev server. On Vercel (Production and Preview) it is the Transaction pooler URI (port 6543): a client holds a server connection only for the length of one transaction, so short-lived serverless instances and parallel build workers no longer compete for the Session pooler's 15 slots. Both are IPv4, so Vercel can reach either. The `max: 3` pool cap stays as a second guard.
+
+> Decision: Deploy row: `vercel.json` pins Vercel Functions to `fra1` (Frankfurt), the region of the Supabase project (`eu-central-1`). Without it functions ran in `iad1` (Washington) and every Payload query crossed the Atlantic (about 1.5 s for a checkout). The file contains only `{"regions": ["fra1"]}`, never env values.
+
+> Decision: `payload migrate` runs only when `VERCEL_ENV === 'production'`: `"ci": "if [ \"$VERCEL_ENV\" = production ]; then payload migrate; fi && next build"`. Preview and Production share the one Supabase database, so migrating in a Preview build would apply an unreviewed PR's migration to the live schema with no way back. A Preview of a PR that adds a migration may therefore fail or render errors until the PR is merged; that is accepted. A failed migration still fails the Production build. The script uses POSIX `sh` syntax because it only runs on Vercel; locally use `npm run migrate` and `npm run build`.
 
 > Decision: Schema is owned by Payload (Drizzle migrations), not hand-written SQL. Row-level security is not used: the database is reached only by the server through Payload with a single connection; authorization is Payload access control (Block C). Supabase RLS policies would never be evaluated and are therefore omitted.
 
@@ -78,6 +82,7 @@ atelier-margoche-shop/
 ├── package.json
 ├── payload.config.ts
 ├── tsconfig.json
+├── vercel.json                       # {"regions": ["fra1"]} only, no env values
 ├── vitest.config.ts
 ├── playwright.config.ts
 ├── src/
@@ -309,7 +314,7 @@ export default buildConfig({
 
 > Decision: Payload replaces its built-in field checks (`required`, `min`, `maxLength`, …) when a field has a custom `validate`. Each custom `validate` therefore enforces the full Block F rule and returns the Block F copy, including the async unique-slug check ("A product with this slug already exists."). The upload errors "Only JPEG, PNG and WebP images are allowed." and "File exceeds the 8 MB limit." come from a Media `beforeOperation` hook, plus `upload.responseOnLimit` for the multipart parser. A Media `beforeDelete` hook returns the Rule B11 copy because `products.image` is required (NOT NULL).
 
-> Decision: `db.push` is `false` in every environment. The one Supabase database serves local development and production, and a dev push writes a `dev` row to `payload_migrations` that makes `payload migrate` in the Vercel build stop and ask for confirmation. The schema therefore changes only through committed migrations: after changing any collection run `npm run payload migrate:create && npm run migrate`. `npm run ci` applies the same migrations on Vercel.
+> Decision: `db.push` is `false` in every environment. The one Supabase database serves local development and production, and a dev push writes a `dev` row to `payload_migrations` that makes `payload migrate` in the Vercel build stop and ask for confirmation. The schema therefore changes only through committed migrations: after changing any collection run `npm run payload migrate:create && npm run migrate`. `npm run ci` applies the same migrations on Vercel Production deploys.
 
 > Decision: The `revalidatePath` hooks do nothing when `context.disableRevalidate` is set. Only `src/seed.ts` sets it, because it runs outside a Next.js request where `revalidatePath` is unavailable.
 
@@ -457,7 +462,8 @@ export const Orders: CollectionConfig = {
     beforeChange: [({ req, data, originalDoc }) => {
       // Admin UI requests carry req.user; server-side Local API calls from the webhook do not.
       if (req.user && originalDoc && data.status && data.status !== originalDoc.status) {
-        throw new Error('Order status is set by Stripe confirmation and cannot be edited.')
+        // public APIError, so the admin UI shows this copy instead of "Something went wrong."
+        throw new APIError('Order status is set by Stripe confirmation and cannot be edited.', 400, undefined, true)
       }
       return data
     }],
@@ -1098,7 +1104,7 @@ Images use `next/image` with `sizes="(max-width: 768px) 100vw, 33vw"` on cards a
 | Input sanitization | Zod on `/next/checkout`; Payload validates admin input; rich text rendered by Payload's React renderer (escapes by construction); never `dangerouslySetInnerHTML`. |
 | ID forgery | Order UUIDs + `session_id` match (B8). Products are public. Orders/Users REST reads require the admin cookie. |
 | Secrets | Only via `process.env.*`. `.env` and `.env.*` ignored; `.env.example` committed with names + source comments. Vercel envs set for Production and Preview. |
-| Headers | `next.config.mjs` `headers()`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` for `/(frontend)` routes. Admin routes keep Payload defaults. |
+| Headers | `next.config.mjs` `headers()`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` for `/(frontend)` routes; `/admin/:path*` gets `X-Frame-Options: SAMEORIGIN` (clickjacking guard that still lets the admin frame its own pages); `/api` keeps Payload defaults. `poweredByHeader: false`, so no `X-Powered-By` header is sent. |
 
 Environment variables (`.env.example`):
 
@@ -1221,7 +1227,18 @@ Shop operator is based in Germany, ships to Europe. This section lists what the 
 6. **Secrets.** `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` returns nothing. The pattern matches only full-length Stripe keys and connection strings with credentials for a non-localhost host, so `.env.example` comments, CI dummy values and docs that mention key prefixes do not match. `.env.example` lists all 6 variables with source comments. Vercel has the same 6 set for Production and Preview.
 7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): catalogue renders 4 cards; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; `/info/impressum` renders.
 8. **CI.** `.github/workflows/ci.yml` runs on every PR: `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build` (with dummy env values that satisfy B15's `sk_test_` prefix check and a `DATABASE_URI` pointing at a `postgres:16` service container). A second job `e2e` (needs the first) migrates and seeds its own `postgres:16` service, builds, starts `npm run start` and runs `npm run test:e2e`, uploading `playwright-report` on failure. PR template contains the checklist: tests green · no secrets · matches SPEC.md · screenshots for UI changes.
-9. **Deployment.** Live at `https://<project>.vercel.app`; Vercel build command `npm run ci` where `"ci": "payload migrate && next build"`; Blob store linked; Stripe webhook endpoint registered and showing recent 200s in the Dashboard; project deployed from the developer's personal GitHub repository, and the full history pushed to the Turing College repository at hand-in.
+9. **Deployment.** Live at `https://<project>.vercel.app`; Vercel build command `npm run ci`, which runs `payload migrate && next build` on Production and only `next build` on Preview (Block A decision); Blob store linked; Stripe webhook endpoint registered and showing recent 200s in the Dashboard; project deployed from the developer's personal GitHub repository, and the full history pushed to the Turing College repository at hand-in.
 10. **Docs.** `README.md` is concise (under 120 lines) with these sections in order: (1) title, one-line pitch, live URL, catalogue screenshot · (2) How it works: live admin edits without redeploy, Stripe hosted Checkout in sandbox, paid only via the signature-verified webhook, declined cards leave the order `pending`; screenshots of the paid order, the admin Orders list and the declined checkout · (3) Owner guide: `/admin`, Products (fields, sold-out toggle), Pages, Media → Vercel Blob, Orders view, reviewer-access note (Block A Roles) · (4) Run locally: one code block (`cp .env.example .env`, `npm install`, `npm run migrate`, `npm run seed`, `npm run dev`), first admin at `/admin`, `stripe listen --events … --forward-to …` · (5) Environment variables: table of name and where to get it (no secrets), Session pooler locally and Transaction pooler on Vercel · (6) Deployment: Vercel from the repository, build `npm run ci`, Blob store and Stripe webhook at `/next/stripe/webhook` · (7) Optional tasks delivered (Orders collection, Order confirmation page, Sold-out state, Second collection: Pages, Written go-live plan → `docs/GO-LIVE-PLAN.md`) plus one "Planned:" line · (8) Test cards · (9) Stack, noting the Payload skills and Stripe plugin used while building. No badges, no table of contents. `docs/GO-LIVE-PLAN.md` covers: Stripe account activation, key swap with new env values, live webhook endpoint + new signing secret, VAT/OSS registration note for cross-border EU sales, replacing draft legal texts, removing the `sk_test_` boot guard deliberately as the last step. `CLAUDE.md` (stage 2) opens with the plain-language description of the shop and states that it needs both a CMS and a payment.
 
 > Decision: The README follows the nine-section structure above instead of the original list ("What the shop sells" … "Future extensions"). The owner chose a shorter README with screenshots; future work is a single "Planned:" line rather than a section.
+
+### Deferred from review
+
+Found in the full review of `main` (2026-09-25) and deliberately left for later; none blocks the sandbox hand-in.
+
+- Webhook looks the order up by `metadata.orderId` (primary key) instead of `stripeSessionId`, and answers 200 "ignored" for sessions that are not ours (refines G11).
+- Checkout rollback also expires the open Stripe session (`stripe.checkout.sessions.expire`, best effort).
+- Shared rate limiter (e.g. Upstash / Vercel KV) instead of the per-instance in-memory map, with expired buckets pruned.
+- Unit tests for `/next/checkout` (404, 409 without an order row, 429, 502 and 500 with the order cancelled, orderNumber retry, idempotency key).
+- Field-level `access.update: () => false` on Stripe-sourced Orders fields (`total`, `stripeSessionId`, `customerEmail`, …), so a REST `PATCH` cannot change them.
+- Images and caching: AVIF in `images.formats`, `preload` on the first card only instead of `priority`, safety-net `revalidate` raised from 60 to 3600, `<Toaster/>` mounted only on product pages.

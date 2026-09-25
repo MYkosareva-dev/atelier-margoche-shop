@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { APIError } from 'payload'
 
 // SPEC Rule B3: paid and cancelled are terminal.
 const TERMINAL_STATUSES = ['paid', 'cancelled']
@@ -21,7 +22,8 @@ export const Orders: CollectionConfig = {
       ({ req, data, originalDoc }) => {
         // Admin UI requests carry req.user; server-side Local API calls from the webhook do not.
         if (req.user && originalDoc && data.status && data.status !== originalDoc.status) {
-          throw new Error('Order status is set by Stripe confirmation and cannot be edited.')
+          // APIError with isPublic so the admin UI shows this copy instead of a generic error.
+          throw new APIError('Order status is set by Stripe confirmation and cannot be edited.', 400, undefined, true)
         }
         if (originalDoc && data.status && data.status !== originalDoc.status && TERMINAL_STATUSES.includes(originalDoc.status)) {
           throw new Error(`Order status cannot change from ${originalDoc.status} to ${data.status}.`)

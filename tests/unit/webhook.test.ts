@@ -78,6 +78,7 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
       collection: 'orders',
       id: ORDER_ID,
       overrideAccess: true,
+      depth: 0,
       data: {
         status: 'paid',
         paidAt: new Date(1_790_000_000 * 1000).toISOString(),
@@ -129,7 +130,6 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
 
   it.each([
     ['checkout.session.completed', 'paid'],
-    ['checkout.session.completed', 'cancelled'],
     ['checkout.session.expired', 'paid'],
     ['checkout.session.expired', 'cancelled'],
   ])('acknowledges %s for an already-%s order with 200 and no write', async (type, status) => {
@@ -146,6 +146,20 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
     warn.mockRestore()
   })
 
+  it('logs an error when a cancelled order is paid, and still acknowledges with 200', async () => {
+    payloadMock.find.mockResolvedValue({ docs: [{ ...pendingOrder, status: 'cancelled' }] })
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const res = await POST(signedRequest(event('checkout.session.completed')))
+
+    expect(res.status).toBe(200)
+    expect(payloadMock.update).not.toHaveBeenCalled()
+    expect(error).toHaveBeenCalledWith(
+      `paid checkout for cancelled order ${ORDER_ID}, payment_intent pi_3Q9xYzAbCdEfGhIj0KlMnOpQ: refund in Stripe`,
+    )
+    error.mockRestore()
+  })
+
   it('moves a pending order to cancelled on checkout.session.expired', async () => {
     const res = await POST(signedRequest(event('checkout.session.expired', { payment_status: 'unpaid' })))
 
@@ -154,6 +168,7 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
       collection: 'orders',
       id: ORDER_ID,
       overrideAccess: true,
+      depth: 0,
       data: { status: 'cancelled' },
     })
   })
@@ -172,11 +187,14 @@ describe('POST /next/stripe/webhook (SPEC Block D2)', () => {
 
   it('returns 500 INTERNAL when the database write fails', async () => {
     payloadMock.update.mockRejectedValue(new Error('connection reset'))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const res = await POST(signedRequest(event('checkout.session.completed')))
 
     expect(res.status).toBe(500)
     expect(await res.json()).toEqual({ error: { code: 'INTERNAL', message: 'Webhook processing failed.' } })
+    expect(error).toHaveBeenCalledWith('webhook processing failed:', 'connection reset')
+    error.mockRestore()
   })
 
   it('acknowledges ignored event types without touching the database', async () => {
