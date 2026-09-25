@@ -27,7 +27,8 @@ export default buildConfig({
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   db: postgresAdapter({
     idType: 'uuid',
-    pool: { connectionString: process.env.DATABASE_URI! },
+    // Supabase's session pooler allows 15 clients in total; each serverless instance and build worker takes at most 3.
+    pool: { connectionString: process.env.DATABASE_URI!, max: 3, idleTimeoutMillis: 10_000 },
     push: false, // schema changes only via committed migrations (npm run migrate), in every environment
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
@@ -42,7 +43,9 @@ export default buildConfig({
       enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
       // Keep the plugin's columns in the schema even when disabled, so local migrations match production.
       alwaysInsertFields: true,
-      collections: { media: true },
+      // Media is public-read, so skip Payload's /api/media/file proxy and return direct Blob URLs,
+      // which the Next image optimizer can fetch.
+      collections: { media: { disablePayloadAccessControl: true } },
       token: process.env.BLOB_READ_WRITE_TOKEN,
     }),
   ],
