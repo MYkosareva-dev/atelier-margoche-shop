@@ -1102,7 +1102,7 @@ Images use `next/image` with `sizes="(max-width: 768px) 100vw, 33vw"` on cards a
 | Input sanitization | Zod on `/next/checkout`; Payload validates admin input; rich text rendered by Payload's React renderer (escapes by construction); never `dangerouslySetInnerHTML`. |
 | ID forgery | Order UUIDs + `session_id` match (B8). Products are public. Orders/Users REST reads require the admin cookie. |
 | Secrets | Only via `process.env.*`. `.env` and `.env.*` ignored; `.env.example` committed with names + source comments. Vercel envs set for Production and Preview. |
-| Headers | `next.config.mjs` `headers()`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` for `/(frontend)` routes. Admin routes keep Payload defaults. |
+| Headers | `next.config.mjs` `headers()`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` for `/(frontend)` routes; `/admin/:path*` gets `X-Frame-Options: SAMEORIGIN` (clickjacking guard that still lets the admin frame its own pages); `/api` keeps Payload defaults. `poweredByHeader: false`, so no `X-Powered-By` header is sent. |
 
 Environment variables (`.env.example`):
 
