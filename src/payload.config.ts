@@ -42,7 +42,9 @@ export default buildConfig({
       enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
       // Keep the plugin's columns in the schema even when disabled, so local migrations match production.
       alwaysInsertFields: true,
-      collections: { media: true },
+      // Media is public-read, so skip Payload's /api/media/file proxy and return direct Blob URLs,
+      // which the Next image optimizer can fetch.
+      collections: { media: { disablePayloadAccessControl: true } },
       token: process.env.BLOB_READ_WRITE_TOKEN,
     }),
   ],
