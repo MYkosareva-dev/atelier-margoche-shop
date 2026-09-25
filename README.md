@@ -45,6 +45,8 @@ npm run seed
 npm run dev               # http://localhost:3000
 ```
 
+`npm run seed` refuses to run once any product exists, so it cannot overwrite a live catalogue; `npm run seed -- --force` upserts the seed products anyway.
+
 On first start, open http://localhost:3000/admin and create the first admin user.
 
 ```bash
