@@ -112,7 +112,7 @@ function OrderSummary({ order }: { order: Order }) {
             <div>
               <p className="font-medium">{item.titleSnapshot}</p>
               <p className="text-sm text-[var(--text-muted)] tabular-nums">
-                {item.quantity} × {formatEUR(item.unitPrice)}
+                {item.quantity} × {formatEUR(item.unitPrice)} <span className="text-sm text-[var(--text-muted)]">incl. VAT</span>
               </p>
             </div>
           </div>
@@ -121,7 +121,9 @@ function OrderSummary({ order }: { order: Order }) {
       <hr className="my-4 border-[var(--border)]" />
       <p className="flex justify-between">
         <span>Total</span>
-        <span className="tabular-nums">{formatEUR(order.total)}</span>
+        <span className="tabular-nums">
+          {formatEUR(order.total)} <span className="text-sm text-[var(--text-muted)]">incl. VAT</span>
+        </span>
       </p>
     </div>
   )
