@@ -297,6 +297,14 @@ export default buildConfig({
 })
 ```
 
+> Decision: The Vercel Blob plugin is configured with `enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN)`. While the token is empty (local development) the plugin is off and uploads fall back to Payload's local disk storage under `media/`, which is git-ignored. Production and Preview always have the token, so uploads there go to Blob (US2). The plugin also sets `alwaysInsertFields: true`, which keeps its `prefix` column in the schema even when it is disabled. Without it, a migration generated locally would be missing a column that production needs.
+
+> Decision: The config lives at `src/payload.config.ts` (the create-payload-app blank-template location, resolved through the `@payload-config` tsconfig alias), not at the repository root. Imports are therefore `./collections/*`.
+
+> Decision: Payload replaces its built-in field checks (`required`, `min`, `maxLength`, …) when a field has a custom `validate`. Each custom `validate` therefore enforces the full Block F rule and returns the Block F copy, including the async unique-slug check ("A product with this slug already exists."). The upload errors "Only JPEG, PNG and WebP images are allowed." and "File exceeds the 8 MB limit." come from a Media `beforeOperation` hook, plus `upload.responseOnLimit` for the multipart parser. A Media `beforeDelete` hook returns the Rule B11 copy because `products.image` is required (NOT NULL).
+
+> Decision: The `revalidatePath` hooks do nothing when `context.disableRevalidate` is set. Only `src/seed.ts` sets it, because it runs outside a Next.js request where `revalidatePath` is unavailable.
+
 ### Users (admin only)
 
 ```ts
@@ -985,6 +993,8 @@ Server component loads the order by UUID; **if `order.stripeSessionId !== sessio
 ### Screen 4 — `/info/[slug]` Static page
 
 Layout: `max-w-2xl mx-auto prose prose-invert`. h1 = page title; rich text rendered via `@payloadcms/richtext-lexical/react` `RichText`. Slug not found → `not-found.tsx`. Loading: h1 Skeleton + 6 line Skeletons. Empty: content is required, so cannot be empty. Error: `error.tsx` "We couldn't load this page".
+
+> Decision: Every route has a `loading.tsx`, so Next.js streams the page shell before the data query finishes. A `notFound()` after that point renders `not-found.tsx` as a soft 404: HTTP 200 plus `<meta name="robots" content="noindex">`. Tests check the rendered copy and the noindex tag, not the status code. `/products/[slug]` and `/info/[slug]` return `[]` from `generateStaticParams`, so the build never queries them; they render on first request and are then cached with `revalidate = 60` plus hook-driven `revalidatePath`.
 
 ### Admin `/admin`
 
