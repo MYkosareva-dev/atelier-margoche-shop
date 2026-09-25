@@ -69,7 +69,7 @@ Use the Supabase **Session pooler** URI (port 5432) locally and the **Transactio
 ## Deployment
 
 - Vercel project connected to this GitHub repository; env variables set for Production and Preview.
-- Build command `npm run ci` (`payload migrate && next build`), so migrations apply on every deploy.
+- Build command `npm run ci`: Production deploys run `payload migrate && next build`; Preview deploys only run `next build`, so a PR branch never changes the live schema. Migrations apply when the PR is merged and Production deploys.
 - A Vercel Blob store is linked to the project, and a Stripe webhook endpoint points at `https://atelier-margoche-shop.vercel.app/next/stripe/webhook` (events `checkout.session.completed`, `checkout.session.expired`).
 
 ## Optional tasks delivered
