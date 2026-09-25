@@ -1,0 +1,47 @@
+# secrets — first line of defence
+.env
+.env.*
+!.env.example
+*.pem
+
+# claude code — personal, machine-specific permissions
+.claude/settings.local.json
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# next.js / build
+/.next/
+/out/
+/build
+/dist
+*.tsbuildinfo
+next-env.d.ts
+
+# payload uploads (production uses Vercel Blob; local files are never committed)
+/media
+/uploads
+
+# testing
+/coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# vercel
+.vercel
+
+# os / editor
+.DS_Store
+Thumbs.db
+/.idea/*
+!/.idea/runConfigurations
