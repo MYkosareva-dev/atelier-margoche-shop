@@ -43,6 +43,7 @@ stripe listen --forward-to localhost:3000/next/stripe/webhook   # local webhooks
 6. **Payload owns the schema.** Change collections in `src/collections/*.ts`, then run `payload migrate:create`. Never edit tables in Supabase by hand.
 7. **Access rules:** Products/Media/Pages — read: anyone; create/update/delete: `req.user` only. Orders — read/update: `req.user`; create/delete: never via API (server Local API only).
 8. **Every user-visible string comes from SPEC.md** (Blocks B, D, E, F). Do not paraphrase error copy.
+9. **Never push, merge or deploy.** git push, PR merges and Vercel deploys are done by the owner only, after she reviews the diff. You may create branches and make commits; you stop there and report what is ready to push.
 
 ## How to work
 

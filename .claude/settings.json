@@ -33,7 +33,11 @@
       "Bash(Get-ChildItem Env:*)",
       "Bash(vercel env pull*)",
       "Bash(git add .env*)",
-      "Bash(git add -f .env*)"
+      "Bash(git add -f .env*)",
+      "Bash(git push*)",
+      "Bash(gh pr merge*)",
+      "Bash(vercel deploy*)",
+      "Bash(vercel --prod*)"
     ],
     "allow": [
       "Read(./.env.example)",
