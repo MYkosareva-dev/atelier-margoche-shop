@@ -9,7 +9,7 @@
 ## Checklist
 
 - [ ] `npm run lint && npx tsc --noEmit && npm run test && npm run build` pass locally
-- [ ] No secrets in the diff (`git diff main...HEAD | grep -E "sk_test_|whsec_|postgres(ql)?://"` is empty)
+- [ ] No secrets in the diff (`git diff main...HEAD | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` is empty)
 - [ ] Collection changed → migration committed and `payload-types.ts` regenerated (or N/A)
 - [ ] User-visible copy matches SPEC.md character-for-character
 - [ ] `spec-architect` subagent report: PASS (paste verdict line below)

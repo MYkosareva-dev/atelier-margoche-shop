@@ -52,9 +52,14 @@ jobs:
 
       - name: Secret scan (staged history of this PR)
         run: |
-          if git log -p origin/${{ github.base_ref || 'main' }}..HEAD 2>/dev/null | grep -E "sk_test_[A-Za-z0-9]{10,}|sk_live_|whsec_[A-Za-z0-9]{10,}|postgres(ql)?://" | grep -vE "localhost|ci:ci@" ; then
-            echo "::error::A secret-looking string was found in the commits of this PR."; exit 1
-          fi
+          # grep -P needs a UTF-8 locale; exit 1 = no match, exit 2 = grep error (must not pass silently).
+          export LC_ALL=C.UTF-8
+          set +e
+          git log -p origin/${{ github.base_ref || 'main' }}..HEAD 2>/dev/null | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "::error::A secret-looking string was found in the commits of this PR."; exit 1; fi
+          if [ "$rc" -gt 1 ]; then echo "::error::Secret scan failed to run (grep exit $rc)."; exit 1; fi
           echo "No secrets found."
 
       - name: Lint
