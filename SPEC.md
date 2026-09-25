@@ -1026,6 +1026,8 @@ Images use `next/image` with `sizes="(max-width: 768px) 100vw, 33vw"` on cards a
 
 > Decision: `images.unoptimized` is `true` only when `NODE_ENV === 'development'`. Because `NEXT_PUBLIC_SERVER_URL` is set, Payload returns absolute media URLs (`http://localhost:3000/api/media/file/…`) in local dev. The Next 16 image optimizer then refuses them with "hostname resolved to private IP", an SSRF guard. `images.dangerouslyAllowLocalIP` would switch that guard off, so dev images are served unoptimized instead. Production and Preview use Blob `https://` URLs and stay optimized.
 
+> Decision: Payload serves uploads through its own `/api/media/file/…` route on the app's domain, so production image URLs are `https://<app host>/api/media/file/…` and the optimizer returned 400 `INVALID_IMAGE_OPTIMIZE_REQUEST` for them. `images.remotePatterns` therefore also allows (1) the hostname parsed from `NEXT_PUBLIC_SERVER_URL` at config time (`https`, pathname `/api/media/**`; skipped if the variable is missing or unparsable, so the config never crashes) and (2) `https://*.vercel.app/api/media/**` for Preview deployments. The Blob and localhost patterns stay.
+
 ---
 
 ## BLOCK F: Business Logic
