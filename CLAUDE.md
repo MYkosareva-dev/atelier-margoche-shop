@@ -14,14 +14,14 @@ Do not invent features that are listed under "OUT" in SPEC.md Block B (cart, cus
 
 ## Stack (see SPEC.md Block A for versions and constraints)
 
-Next.js App Router + TypeScript · Payload 3 (inside the Next.js app) · Supabase Postgres (one project, Session-pooler URI) · Vercel Blob for uploads · Stripe hosted Checkout (EUR, test mode) · Tailwind v4 + shadcn/ui (dark theme) · Zod · Vitest + Playwright · npm · Vercel.
+Next.js App Router + TypeScript · Payload 3 (inside the Next.js app) · Supabase Postgres (one project; Session pooler locally, Transaction pooler on Vercel) · Vercel Blob for uploads · Stripe hosted Checkout (EUR, test mode) · Tailwind v4 + shadcn/ui (dark theme) · Zod · Vitest + Playwright · npm · Vercel.
 
 ## Commands
 
 ```bash
 npm run dev            # Next.js + Payload at http://localhost:3000, admin at /admin
 npm run build          # next build (type errors fail the build)
-npm run ci             # payload migrate && next build  — used by Vercel
+npm run ci             # Vercel build: payload migrate && next build on Production, only next build on Preview
 npm run lint           # eslint
 npm run test           # vitest (unit)
 npm run test:e2e       # playwright (needs `npm run dev` + seeded DB)
