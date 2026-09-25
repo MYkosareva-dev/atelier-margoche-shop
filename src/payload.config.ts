@@ -27,7 +27,8 @@ export default buildConfig({
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   db: postgresAdapter({
     idType: 'uuid',
-    pool: { connectionString: process.env.DATABASE_URI! },
+    // Supabase's session pooler allows 15 clients in total; each serverless instance and build worker takes at most 3.
+    pool: { connectionString: process.env.DATABASE_URI!, max: 3, idleTimeoutMillis: 10_000 },
     push: false, // schema changes only via committed migrations (npm run migrate), in every environment
     migrationDir: path.resolve(dirname, 'migrations'),
   }),

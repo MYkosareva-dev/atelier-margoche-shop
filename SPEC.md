@@ -51,6 +51,8 @@
 
 > Decision: Payload's `idType: 'uuid'` is enabled so order URLs cannot be enumerated.
 
+> Decision: Database row: the `pg` pool is capped at `max: 3` with `idleTimeoutMillis: 10_000`. Supabase's Session pooler allows 15 clients for the whole project, and each client holds its slot for the life of the connection. With the default pool of 10, one build (several prerender workers) or a few warm Vercel instances used up every slot and the build failed with `EMAXCONNSESSION` "max clients reached". Three connections per instance or build worker is plenty for a single-owner shop, and idle ones are released after 10 seconds.
+
 > Decision: Schema is owned by Payload (Drizzle migrations), not hand-written SQL. Row-level security is not used: the database is reached only by the server through Payload with a single connection; authorization is Payload access control (Block C). Supabase RLS policies would never be evaluated and are therefore omitted.
 
 > Decision: Free shipping across Europe, prices shown "incl. VAT". Removes shipping-rate logic and satisfies German price-transparency rules in one line.
@@ -1028,7 +1030,7 @@ Images use `next/image` with `sizes="(max-width: 768px) 100vw, 33vw"` on cards a
 
 > Decision: `images.unoptimized` is `true` only when `NODE_ENV === 'development'`. Because `NEXT_PUBLIC_SERVER_URL` is set, Payload returns absolute media URLs (`http://localhost:3000/api/media/file/…`) in local dev. The Next 16 image optimizer then refuses them with "hostname resolved to private IP", an SSRF guard. `images.dangerouslyAllowLocalIP` would switch that guard off, so dev images are served unoptimized instead. Production and Preview return direct Blob URLs (`https://*.public.blob.vercel-storage.com/…`, see the Block C decision on `disablePayloadAccessControl`) and stay optimized.
 
-> Decision: Payload serves uploads through its own `/api/media/file/…` route on the app's domain, so production image URLs are `https://<app host>/api/media/file/…` and the optimizer returned 400 `INVALID_IMAGE_OPTIMIZE_REQUEST` for them. `images.remotePatterns` therefore also allows (1) the hostname parsed from `NEXT_PUBLIC_SERVER_URL` at config time (`https`, pathname `/api/media/**`; skipped if the variable is missing or unparsable, so the config never crashes) and (2) `https://*.vercel.app/api/media/**` for Preview deployments. The Blob and localhost patterns stay.
+> Decision: Before `disablePayloadAccessControl` (Block C), Payload served uploads through its own `/api/media/file/…` route on the app's domain, and the optimizer returned 400 `INVALID_IMAGE_OPTIMIZE_REQUEST` for those `https://<app host>/api/media/file/…` URLs. Production now returns direct Blob URLs; the proxy route remains only as a fallback (e.g. a URL cached before the switch). `images.remotePatterns` therefore still allows (1) the hostname parsed from `NEXT_PUBLIC_SERVER_URL` at config time (`https`, pathname `/api/media/**`; skipped if the variable is missing or unparsable, so the config never crashes) and (2) `https://*.vercel.app/api/media/**` for Preview deployments. The Blob and localhost patterns stay.
 
 ---
 
