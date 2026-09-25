@@ -14,7 +14,11 @@ const nextConfig: NextConfig = {
         pathname: '/api/media/file/**',
       },
     ],
-    remotePatterns: [{ protocol: 'https', hostname: '*.public.blob.vercel-storage.com' }],
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      // With NEXT_PUBLIC_SERVER_URL set, Payload returns absolute local media URLs in dev.
+      { protocol: 'http', hostname: 'localhost', port: '3000', pathname: '/api/media/**' },
+    ],
   },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
