@@ -1,6 +1,8 @@
 /**
  * Seeds 4 products and 4 pages (SPEC Block C). Run with `npm run seed`.
  * Refuses to run when any product exists; `npm run seed -- --force` upserts anyway.
+ * Runs as tsx's entry module (not `payload run`), so a stalled run exits non-zero instead of silently with 0.
+ * Ends with "Seeded N products, M pages" and exits 1 when no product was written (SPEC Block H #8).
  * With --force it is idempotent, keyed by slug. Products are upserted: an existing row gets the seed's title, price, kind,
  * description and soldOut back (its image is kept, so no duplicate media). Pages that already exist are
  * left untouched, so the owner's legal texts are never overwritten.
@@ -185,6 +187,9 @@ async function seed() {
 
   await fs.mkdir(IMAGES_DIR, { recursive: true })
 
+  let productsWritten = 0
+  let pagesWritten = 0
+
   for (const p of PRODUCTS) {
     const fields = {
       title: p.title,
@@ -197,12 +202,14 @@ async function seed() {
     const existing = await payload.find({ collection: 'products', where: { slug: { equals: p.slug } }, limit: 1 })
     if (existing.docs.length) {
       await payload.update({ collection: 'products', id: existing.docs[0].id, data: fields, context })
+      productsWritten++
       payload.logger.info(`Product "${p.slug}" updated`)
       continue
     }
     const filePath = (await findImageFor(p.slug)) ?? (await ensureImage(p.slug, p.colors))
     const media = await payload.create({ collection: 'media', data: { alt: p.alt }, filePath, context })
     await payload.create({ collection: 'products', data: { ...fields, image: media.id }, context })
+    productsWritten++
     payload.logger.info(`Product "${p.slug}" created`)
   }
 
@@ -217,10 +224,17 @@ async function seed() {
       data: { title: pg.title, slug: pg.slug, content: toLexical(pg.blocks) },
       context,
     })
+    pagesWritten++
     payload.logger.info(`Page "${pg.slug}" created`)
   }
 
-  payload.logger.info('Seed complete')
+  // Strict: an empty catalogue after seeding must fail the caller (CI), never pass silently.
+  const { totalDocs: productsInDb } = await payload.count({ collection: 'products' })
+  if (productsWritten === 0 || productsInDb === 0) {
+    console.error(`Seed failed: ${productsWritten} products written, ${productsInDb} in the database.`)
+    process.exit(1)
+  }
+  console.log(`Seeded ${productsWritten} products, ${pagesWritten} pages`)
 }
 
 await seed()
