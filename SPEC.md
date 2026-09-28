@@ -37,7 +37,7 @@
 | Framework | Next.js App Router + TypeScript, version installed by `npx create-payload-app@latest` (blank template) | Do not upgrade or downgrade Next.js independently of Payload. |
 | CMS | Payload 3.x, installed inside the Next.js app | Collections are defined in code; schema is managed by Payload migrations. |
 | Database | Supabase Postgres, ONE project, via `@payloadcms/db-postgres` | Connection string = a Supabase pooler URI (both IPv4): **Session pooler** (port 5432) locally, **Transaction pooler** (port 6543) on Vercel (see Decision below). Vercel cannot reach the IPv6 direct connection. |
-| File storage | Vercel Blob via `@payloadcms/storage-vercel-blob` | Vercel's filesystem is read-only at runtime; local disk uploads are forbidden in production. |
+| File storage | Vercel Blob via `@payloadcms/storage-vercel-blob` | Vercel's filesystem is read-only at runtime; local disk uploads are forbidden in production. Local development should set `BLOB_READ_WRITE_TOKEN` too, so media served by Payload resolves: the files live in Vercel Blob, and without the token the Blob plugin is off and Payload looks for them in the local `media/` folder, where they do not exist. |
 | Payments | Stripe hosted Checkout, `mode: 'payment'`, card only | Test keys only (`sk_test_…`). Currency: **EUR**. Money stored as INTEGER cents. |
 | Styling | Tailwind CSS v4 + shadcn/ui, dark theme | Design polish is a later phase; Block E defines v1 layout and tokens. |
 | Icons | `lucide-react` | Exact icon names in Block E. |
@@ -308,7 +308,7 @@ export default buildConfig({
 })
 ```
 
-> Decision: The Vercel Blob plugin is configured with `enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN)`. While the token is empty (local development) the plugin is off and uploads fall back to Payload's local disk storage under `media/`, which is git-ignored. Production and Preview always have the token, so uploads there go to Blob (US2). The plugin also sets `alwaysInsertFields: true`, which keeps its `prefix` column in the schema even when it is disabled. Without it, a migration generated locally would be missing a column that production needs.
+> Decision: The Vercel Blob plugin is configured with `enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN)`. While the token is empty (CI, or a local setup without it) the plugin is off and uploads fall back to Payload's local disk storage under `media/`, which is git-ignored. Local development against the shared database should set the token (Block F environment variables), because that database's media rows point at files in Blob. Production and Preview always have the token, so uploads there go to Blob (US2). The plugin also sets `alwaysInsertFields: true`, which keeps its `prefix` column in the schema even when it is disabled. Without it, a migration generated locally would be missing a column that production needs.
 
 > Decision: The Blob plugin's Media collection option is `disablePayloadAccessControl: true`. By default the plugin keeps Payload's `/api/media/file/…` access-control proxy, so production media URLs pointed at the app's own domain and `/_next/image` rejected them with 400 `INVALID_IMAGE_OPTIMIZE_REQUEST`. Media is public-read (Block C access rules), so the proxy protects nothing; with the option on, `url` is resolved on read to the direct `https://*.public.blob.vercel-storage.com/…` address, which the existing `images.remotePatterns` entry allows. Existing documents need no data change. Local development is unaffected: without a token the plugin is off and Payload serves files from `media/` as before.
 
@@ -1195,8 +1195,10 @@ PAYLOAD_SECRET=          # any 32+ random chars: `openssl rand -hex 32` (Git Bas
 NEXT_PUBLIC_SERVER_URL=  # http://localhost:3000 locally; https://<project>.vercel.app on Vercel
 STRIPE_SECRET_KEY=       # Stripe Dashboard (Test mode ON) → Developers → API keys → Secret key, starts with sk_test_
 STRIPE_WEBHOOK_SECRET=   # locally: printed by `stripe listen`; on Vercel: Developers → Webhooks → your endpoint → Signing secret, starts with whsec_
-BLOB_READ_WRITE_TOKEN=   # Vercel → Storage → Blob store → .env.local tab (auto-injected when the store is linked to the project)
+BLOB_READ_WRITE_TOKEN=   # Vercel → Storage → Blob store → .env.local tab (auto-injected when the store is linked to the project). Set it locally too: media files live in Blob, not in media/
 ```
+
+Local development should set `BLOB_READ_WRITE_TOKEN` too, so media served by Payload resolves: the files live in Vercel Blob, and without the token the Blob plugin is off and Payload looks for them in the local `media/` folder, where they do not exist.
 
 ### Payments (M4) — Stripe, sandbox
 
