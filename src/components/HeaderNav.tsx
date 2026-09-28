@@ -2,22 +2,23 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, User } from 'lucide-react'
+import { ImageIcon, LayoutGrid, User } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
 const LINKS = [
-  { href: '/gallery', label: 'Gallery', Icon: LayoutGrid },
+  { href: '/', label: 'Works', Icon: LayoutGrid },
+  { href: '/gallery', label: 'Gallery', Icon: ImageIcon },
   { href: '/info/about', label: 'About', Icon: User },
 ]
 
-/** Header nav (SPEC Block E shared layout): outlined buttons; the current page's button is filled. */
+/** Header nav (SPEC Block E shared layout): outlined icon buttons; the current page's button is filled. */
 export function HeaderNav() {
   const pathname = usePathname()
   return (
     <nav className="flex gap-2 text-sm text-[var(--text-muted)]">
       {LINKS.map(({ href, label, Icon }) => {
-        const current = pathname === href || pathname.startsWith(`${href}/`)
+        const current = pathname === href || (href !== '/' && pathname.startsWith(`${href}/`))
         return (
           <Link
             key={href}
@@ -28,8 +29,9 @@ export function HeaderNav() {
               current && 'bg-[var(--surface-2)] text-[var(--text)]',
             )}
           >
-            <Icon className="hidden size-4 sm:block" aria-hidden />
-            {label}
+            <Icon className="size-4" aria-hidden />
+            {/* Below 640 px three labelled buttons do not fit next to the logo at 375; the label stays the accessible name. */}
+            <span className="sr-only sm:not-sr-only">{label}</span>
           </Link>
         )
       })}
