@@ -884,8 +884,11 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 ```html
 <header id="site-header" class="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur">
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-    <a href="/" id="logo" title="Home" class="font-[family-name:var(--font-display)] text-xl transition-opacity hover:opacity-80">Atelier <span class="gradient-text">Margoche</span></a>
-    <nav class="flex gap-3 text-sm text-[var(--text-muted)]"><a href="/gallery">Gallery</a><span aria-hidden>·</span><a href="/info/about">About</a></nav>
+    <a href="/" id="logo" title="Home" class="font-[family-name:var(--font-display)] text-xl transition-opacity hover:opacity-80 sm:text-2xl">Atelier <span class="gradient-text">Margoche</span></a>
+    <nav class="flex gap-2 text-sm text-[var(--text-muted)]">
+      <a href="/gallery" aria-current="page" class="nav-button flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 hover:bg-[var(--surface-2)] bg-[var(--surface-2)] text-[var(--text)]"><svg data-icon="layout-grid"/>Gallery</a>
+      <a href="/info/about" class="nav-button …same, without the current-page classes…"><svg data-icon="user"/>About</a>
+    </nav>
   </div>
 </header>
 <main id="main" class="mx-auto max-w-6xl px-4 py-10">…</main>
@@ -897,6 +900,8 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 </footer>
 ```
 
+The nav is the client component `HeaderNav` (`src/components/HeaderNav.tsx`), because it reads the current path. The link whose path matches the current page (the path itself or anything below it) gets `aria-current="page"`, `bg-[var(--surface-2)]` and `text-[var(--text)]`.
+
 > Decision: The frontend layout's `<html>` element has `suppressHydrationWarning`. Browser extensions inject attributes into `<html>` before React hydrates, which otherwise logs a hydration mismatch (and would break Block H #3, zero console errors). The flag applies to that element's own attributes only, not to its children.
 
 ### Component table
@@ -905,6 +910,7 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 |---|---|---|
 | Primary button (Buy now) | `Button` size `lg` | h-12, px-6, rounded-[var(--radius)], `background: var(--gradient)`, text `#0b0b0f` font-semibold; hover brightness-110; focus ring 2px `--accent-2`; disabled opacity-50 cursor-not-allowed; loading shows `Loader2` spinning + "Redirecting to secure checkout…" |
 | Primary button, compact (Buy now on gallery cards and in the showcase caption) | `Button` size `sm` | h-9, px-4, same gradient, text colour, radius, focus and loading states as the primary button; no ids (class `buy-now-sm`), because it repeats on a page |
+| Header nav button (Gallery, About) | none (`Link`) | outlined: border `--border`, rounded-lg, px-3 py-1.5, text-sm `--text-muted`, gap-2 between buttons; lucide icon 16 px before the label (from 640 px up); hover bg `--surface-2`; current page bg `--surface-2` text `--text` with `aria-current="page"`; focus ring 2px `--accent-2` |
 | Secondary button (Back to gallery) | `Button` variant `outline` | h-10, border `--border`, text `--text` |
 | Product card | `Card` | bg `--surface`, border `--border`, rounded 14, `.gradient-ring` on hover, image aspect 4/5 object-cover |
 | Badge kind | `Badge` variant `secondary` | "Photo" bg `--surface-2`; "AI art" `background: var(--gradient)` text `#0b0b0f` |
@@ -916,7 +922,7 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 | Skeleton | `Skeleton` | bg `--surface-2`, pulse |
 | Status pill (order) | `Badge` | paid → `--success`/15 text `--success` "Paid"; pending → `--accent`/15 text `--accent` "Confirming…"; cancelled → `--danger`/15 "Cancelled" |
 
-Icons (lucide-react): `Loader2`, `Info`, `CheckCircle2`, `Clock3`, `XCircle`, `ArrowLeft`, `Sparkles` (next to "AI art" disclosure), `Truck`, `X` (lightbox close), `ChevronLeft` / `ChevronRight` (showcase arrows).
+Icons (lucide-react): `Loader2`, `Info`, `CheckCircle2`, `Clock3`, `XCircle`, `ArrowLeft`, `Sparkles` (next to "AI art" disclosure), `Truck`, `X` (lightbox close), `ChevronLeft` / `ChevronRight` (showcase arrows), `LayoutGrid` (header Gallery), `User` (header About).
 
 `src/lib/money.ts`:
 ```ts
@@ -933,7 +939,7 @@ Layout (1280 and 375): one large image centred, hero size, `object-contain` insi
 ```html
 <h1 class="sr-only">Atelier Margoche</h1>
 <section id="showcase" aria-roledescription="carousel" aria-label="Featured works">
-  <div class="flex items-center justify-center gap-6">
+  <div class="flex items-end justify-center gap-6">
     <button id="showcase-prev-preview" type="button" aria-hidden="true" tabindex="-1" class="relative hidden aspect-[4/5] h-[calc((100dvh-9rem)*0.35)] opacity-40 hover:opacity-70 lg:block">
       <img src="…/card.webp" alt="" class="object-cover" /><span class="absolute inset-0 bg-[var(--bg)]/30"></span>
     </button>
@@ -957,7 +963,7 @@ Layout (1280 and 375): one large image centred, hero size, `object-contain` insi
 <p class="mt-10 text-center"><a id="all-works" href="/gallery">All works →</a></p>
 ```
 
-Side previews (`#showcase-prev-preview`, `#showcase-next-preview`) show the previous and next works' card-size images at about 35% of the main image's height cap, vertically centred, at 40% opacity under a subtle `--bg`/30 overlay, 70% on hover (no transition under `prefers-reduced-motion`). Below 1024 px they are hidden; arrows and swipe remain. With 3 or more available works both show; with 2, only the next preview shows (an empty spacer of the same size keeps the main image centred); with 1, none. They are a pointer shortcut only (`aria-hidden`, `tabindex="-1"`), because the arrows already carry the accessible "Previous work" / "Next work" controls.
+Side previews (`#showcase-prev-preview`, `#showcase-next-preview`) show the previous and next works' card-size images at about 35% of the main image's height cap, bottom-aligned with the main image (`items-end` on the row; the previews keep their height), at 40% opacity under a subtle `--bg`/30 overlay, 70% on hover (no transition under `prefers-reduced-motion`). Below 1024 px they are hidden; arrows and swipe remain. With 3 or more available works both show; with 2, only the next preview shows (an empty spacer of the same size keeps the main image centred); with 1, none. They are a pointer shortcut only (`aria-hidden`, `tabindex="-1"`), because the arrows already carry the accessible "Previous work" / "Next work" controls.
 
 The kind badge ("Photo" / "AI art") is part of the caption, so AI-generated works are labelled wherever they are offered (Block F §Legal, EU AI Act Art. 50).
 
@@ -980,7 +986,9 @@ Actions table:
 | Click "All works →" | → `/gallery` | — |
 | 7000 ms pass with no interaction | Next work | — |
 
-> Decision: Auto-advance rules. The showcase moves to the next work every 7000 ms. It pauses while the pointer is over `#showcase` or focus is inside it, and resumes when both leave. The first user interaction (arrow click, side-preview click, ← / → key, swipe) stops it for good on that page view. Under `prefers-reduced-motion: reduce` it never starts; the preference is read on the client, and the server render treats it as reduced so nothing advances before hydration. The caption is `aria-live="polite"` only once auto-advance is off, so screen readers are not interrupted every 7 s. The next work's image is rendered hidden (`visibility: hidden`, `loading="eager"`) so it is already loaded when it becomes current.
+> Decision: Auto-advance rules. The showcase moves to the next work every 7000 ms. It pauses while the pointer is over the main image (its box, including the arrows) or a side preview, or while focus is inside `#showcase`, and resumes when all of these end; the pointer over the caption or the gaps between images does not pause it. The first user interaction (arrow click, side-preview click, ← / → key, swipe) stops it for good on that page view. Under `prefers-reduced-motion: reduce` it never starts; the preference is read on the client, and the server render treats it as reduced so nothing advances before hydration. The caption is `aria-live="polite"` only once auto-advance is off, so screen readers are not interrupted every 7 s. The next work's image is rendered hidden (`visibility: hidden`, `loading="eager"`) so it is already loaded when it becomes current.
+
+> Decision: Header nav as outlined buttons. "Gallery" and "About" render as outlined buttons with `LayoutGrid` / `User` icons, and the current page's button is filled with `--surface-2`, so the header shows where the visitor is; the "·" separator is dropped in favour of a gap-2 between the buttons. The nav became the client component `HeaderNav` because the current page needs `usePathname()`; the logo steps up to `text-2xl`. Below 640 px the logo stays `text-xl` and the icons are hidden, so logo and both buttons fit the 375 px header without horizontal overflow.
 
 > Decision: The showcase is a small custom client component, not shadcn Carousel. Carousel needs `embla-carousel-react` plus `embla-carousel-autoplay`, neither of which is installed, while the showcase shows one image at a time and needs only an index, a timer, a key listener and a touch threshold. No dependencies are added.
 
@@ -1119,7 +1127,7 @@ Payload's default UI, unmodified except: `admin.meta.titleSuffix: ' · Atelier M
 
 | Breakpoint | Change |
 |---|---|
-| `< 768` (375 test) | Single-column grids; header nav keeps two links (fits); footer stacks; product detail image above text; buttons full width (`w-full`). |
+| `< 768` (375 test) | Single-column grids; header nav keeps two buttons, labels only (fits); footer stacks; product detail image above text; buttons full width (`w-full`). |
 | `≥ 768` | Catalogue 3 columns; product detail two columns; footer row. |
 | `≥ 1280` (1280 test) | `max-w-6xl` container (1152 px) centered; no other change. |
 
