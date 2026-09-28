@@ -43,14 +43,14 @@ export default async function GalleryPage() {
           </Link>
         </div>
       ) : (
-        <>
+        <div className="lg-tall:flex lg-tall:min-h-0 lg-tall:flex-1 lg-tall:flex-col">
           <Showcase items={items} />
-          <p className="mt-10 text-center">
+          <p className="mt-10 text-center lg-tall:mt-0 lg-tall:flex lg-tall:h-12 lg-tall:shrink-0 lg-tall:items-center lg-tall:justify-center">
             <Link href="/" id="all-works" className="text-sm underline-offset-4 hover:underline">
               All works →
             </Link>
           </p>
-        </>
+        </div>
       )}
     </>
   )
