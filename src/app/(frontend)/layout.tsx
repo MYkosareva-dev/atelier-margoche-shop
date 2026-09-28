@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Fraunces, Inter } from 'next/font/google'
 import React from 'react'
 
+import { HeaderNav } from '@/components/HeaderNav'
 import { Toaster } from '@/components/Toaster'
 
 import './globals.css'
@@ -28,15 +29,11 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
               href="/"
               id="logo"
               title="Home"
-              className="font-[family-name:var(--font-display)] text-xl transition-opacity hover:opacity-80"
+              className="font-[family-name:var(--font-display)] text-xl transition-opacity sm:text-2xl hover:opacity-80"
             >
               Atelier <span className="gradient-text">Margoche</span>
             </Link>
-            <nav className="flex gap-3 text-sm text-[var(--text-muted)]">
-              <Link href="/gallery">Gallery</Link>
-              <span aria-hidden>·</span>
-              <Link href="/info/about">About</Link>
-            </nav>
+            <HeaderNav />
           </div>
         </header>
         <main id="main" className="mx-auto max-w-6xl px-4 py-10">
