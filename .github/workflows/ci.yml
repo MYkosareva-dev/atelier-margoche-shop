@@ -126,6 +126,18 @@ jobs:
       - name: Seed CI database
         run: npm run seed
 
+      - name: Check CI database is seeded
+        run: |
+          # Read straight from Postgres, so this check does not depend on the seed's own runtime (SPEC Block H #8).
+          set -euo pipefail
+          products=$(psql "$DATABASE_URI" -tAc "select count(*) from products")
+          pages=$(psql "$DATABASE_URI" -tAc "select count(*) from pages")
+          echo "CI database: $products products, $pages pages"
+          if [ "$products" -eq 0 ] || [ "$pages" -eq 0 ]; then
+            echo "::error::Seed left the CI database empty ($products products, $pages pages)."
+            exit 1
+          fi
+
       - name: Build
         run: npm run build
 
