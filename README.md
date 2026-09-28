@@ -9,6 +9,7 @@ A small online shop for art prints — photographs and AI-generated artworks —
 ## How it works
 
 - The owner edits products and pages in the Payload admin; changes go live within a minute, with no redeploy.
+- The home page `/` is a showcase of the prints that are not sold out, one large work at a time; the full catalogue, with a Buy now button on every available card, is at `/gallery`.
 - "Buy now" opens Stripe's hosted Checkout in sandbox (test) mode — no real money moves.
 - An order is marked paid only by the Stripe webhook, after its signature is verified — never by the thank-you page.
 - A declined card leaves the order `pending`; nothing is marked paid.
