@@ -2,15 +2,15 @@ import { expect, test } from '@playwright/test'
 
 // Requires `npm run dev` and a seeded database (`npm run seed`).
 
-test('/gallery renders the catalogue with at least 4 product cards', async ({ page }) => {
-  await page.goto('/gallery')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gallery')
+test('/ renders the Works catalogue with at least 4 product cards', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Works')
   // At least the 4 seeded products; the owner may have added more through the admin panel.
   await expect(page.locator('#catalogue .product-card').nth(3)).toBeVisible()
 })
 
-test('/ shows the showcase: image, caption with price, arrows and side previews', async ({ page }) => {
-  await page.goto('/')
+test('/gallery shows the showcase: image, caption with price, arrows and side previews', async ({ page }) => {
+  await page.goto('/gallery')
   const showcase = page.locator('#showcase')
   await expect(showcase).toBeVisible()
   const image = () => showcase.locator('a:not([aria-hidden]) img').first()
@@ -25,16 +25,32 @@ test('/ shows the showcase: image, caption with price, arrows and side previews'
   await expect(image()).not.toHaveAttribute('alt', first ?? '')
   await page.locator('#showcase-prev-preview').click()
   await expect(image()).toHaveAttribute('alt', first ?? '')
+
+  await page.locator('#all-works').click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Works')
 })
 
-test('Buy now on a gallery card starts checkout for that card without opening the product page', async ({ page }) => {
+test('header buttons lead to Works, Gallery and About and mark the current page', async ({ page }) => {
+  await page.goto('/')
+  const nav = page.locator('#site-header nav')
+  await expect(nav.getByRole('link', { name: 'Works' })).toHaveAttribute('aria-current', 'page')
+  await nav.getByRole('link', { name: 'Gallery' }).click()
+  await expect(page).toHaveURL(/\/gallery$/)
+  await expect(nav.getByRole('link', { name: 'Gallery' })).toHaveAttribute('aria-current', 'page')
+  await expect(nav.getByRole('link', { name: 'Works' })).not.toHaveAttribute('aria-current', 'page')
+  await nav.getByRole('link', { name: 'About' }).click()
+  await expect(page).toHaveURL(/\/info\/about$/)
+})
+
+test('Buy now on a Works card starts checkout for that card without opening the product page', async ({ page }) => {
   // CI runs with dummy Stripe keys, so the server call is stubbed; the request body proves which product was bought.
   await page.route('**/next/checkout', (route) =>
     route.fulfill({ json: { url: 'https://checkout.stripe.com/c/pay/cs_test_e2e' } }),
   )
   await page.route('https://checkout.stripe.com/**', (route) => route.fulfill({ body: 'stripe checkout stub' }))
 
-  await page.goto('/gallery')
+  await page.goto('/')
   const card = page.locator('#catalogue .product-card[href="/products/golden-hour-lisbon"]')
   const productId = await card.getAttribute('data-product-id')
   const button = card.locator('xpath=..').getByRole('button', { name: 'Buy now' })
@@ -53,6 +69,7 @@ test('Buy now on a gallery card starts checkout for that card without opening th
 
 test('clicking the product image opens the lightbox and Esc closes it', async ({ page }) => {
   await page.goto('/products/golden-hour-lisbon')
+  await expect(page.locator('main a[href="/"]', { hasText: 'Works' })).toBeVisible()
   await page.locator('#product-image').click()
   await expect(page.locator('#lightbox')).toBeVisible()
   await page.keyboard.press('Escape')
@@ -72,6 +89,7 @@ test('unknown product renders the not-found page', async ({ page }) => {
   const res = await page.goto('/products/does-not-exist')
   expect(res?.status()).toBe(404)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page does not exist.')
+  await expect(page.getByRole('link', { name: 'Back to works' })).toHaveAttribute('href', '/')
 })
 
 test('/info/impressum renders and every footer link is present', async ({ page }) => {
@@ -99,7 +117,7 @@ test('POST /next/checkout rejects an invalid productId with 400 INVALID_BODY', a
 
 test('sold-out product shows "Sold out" and checkout returns 409', async ({ page, request }) => {
   // Seeded with soldOut: true (SPEC Block C seed table).
-  await page.goto('/gallery')
+  await page.goto('/')
   const card = page.locator('#catalogue .product-card[href="/products/brass-and-velvet"]')
   await expect(card).toHaveAttribute('data-sold-out', 'true')
   await expect(card.locator('.badge-soldout')).toHaveText('Sold out')
