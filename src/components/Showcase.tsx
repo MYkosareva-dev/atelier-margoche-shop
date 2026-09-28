@@ -97,13 +97,16 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
       ref={sectionRef}
       aria-roledescription="carousel"
       aria-label="Featured works"
+      className="lg-tall:@container"
       onFocus={() => setFocused(true)}
       onBlur={(e) => {
         if (!sectionRef.current?.contains(e.relatedTarget as Node | null)) setFocused(false)
       }}
     >
       <div
-        className="flex items-end justify-center gap-6 lg:gap-20"
+        // lg-tall: row height H = the viewport below the header (4rem + 1px) minus the bottom band (h-16 caption + h-12
+        // "All works"), capped so image (0.8H) + two previews (0.28H each) + two 5rem gaps fit the width.
+        className="flex items-end justify-center gap-6 lg:gap-20 lg-tall:h-[min(calc(100dvh-4rem-1px-7rem),calc((100cqw-10rem)/1.36))]"
         onTouchStart={(e) => {
           touchX.current = e.touches[0]?.clientX ?? null
         }}
@@ -126,11 +129,11 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
         )}
 
         <div
-          className="relative w-full min-w-0 lg:max-w-[calc((100dvh-9rem)*0.8)] lg:flex-1"
+          className="relative w-full min-w-0 lg:max-w-[calc((100dvh-9rem)*0.8)] lg:flex-1 lg-tall:aspect-[4/5] lg-tall:h-full lg-tall:w-auto lg-tall:max-w-full lg-tall:flex-initial"
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
         >
-          <div className="relative mx-auto aspect-[4/5] max-h-[calc(100dvh-9rem)] w-full">
+          <div className="relative mx-auto aspect-[4/5] max-h-[calc(100dvh-9rem)] w-full lg-tall:aspect-auto lg-tall:h-full lg-tall:max-h-none">
             {slides.map((item) => {
               const isCurrent = item.id === current.id
               return (
@@ -158,24 +161,24 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
             })}
           </div>
 
-          {/* Below 1024 px the arrows overlay the image edges; from 1024 px they sit centred in the gaps next to the side previews. */}
+          {/* Below 1024 px the arrows overlay the image edges; from 1024 px they sit centred in the 80 px gaps next to the side previews. */}
           {count > 1 && (
             <>
               <button
                 type="button"
                 aria-label="Previous work"
                 onClick={() => step(-1)}
-                className="absolute top-1/2 left-2 flex size-11 lg:right-full lg:left-auto lg:mr-4.5 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
+                className="absolute top-1/2 left-2 flex size-11 -translate-y-1/2 lg:right-full lg:left-auto lg:mr-10 lg:translate-x-1/2 lg-tall:size-[clamp(2.75rem,5.5dvh,3.5rem)] items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
               >
-                <ChevronLeft className="size-6" aria-hidden />
+                <ChevronLeft className="size-6 lg-tall:size-[55%]" aria-hidden />
               </button>
               <button
                 type="button"
                 aria-label="Next work"
                 onClick={() => step(1)}
-                className="absolute top-1/2 right-2 flex size-11 lg:right-auto lg:left-full lg:ml-4.5 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
+                className="absolute top-1/2 right-2 flex size-11 -translate-y-1/2 lg:right-auto lg:left-full lg:ml-10 lg:-translate-x-1/2 lg-tall:size-[clamp(2.75rem,5.5dvh,3.5rem)] items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
               >
-                <ChevronRight className="size-6" aria-hidden />
+                <ChevronRight className="size-6 lg-tall:size-[55%]" aria-hidden />
               </button>
             </>
           )}
@@ -194,7 +197,7 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
       <div
         id="showcase-caption"
         aria-live={stopped || reducedMotion ? 'polite' : 'off'}
-        className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm"
+        className="mt-4 flex flex-wrap content-center items-center justify-center gap-x-3 gap-y-2 text-sm lg-tall:mt-0 lg-tall:h-16 lg-tall:shrink-0"
       >
         <span className="text-base font-medium">{current.title}</span>
         <KindBadge kind={current.kind} className="h-8 rounded-full px-3 text-xs" />
@@ -222,8 +225,9 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
   )
 }
 
-// ~35% of the main image's height cap, bottom-aligned with it; mouse affordance only (the arrows carry the accessible labels).
-const PREVIEW_SIZE = 'aspect-[4/5] h-[calc((100dvh-9rem)*0.35)] shrink-0'
+// ~35% of the main image's height (its cap, or the filled row at lg-tall), bottom-aligned with it;
+// mouse affordance only (the arrows carry the accessible labels).
+const PREVIEW_SIZE = 'aspect-[4/5] h-[calc((100dvh-9rem)*0.35)] shrink-0 lg-tall:h-[35%]'
 
 function SidePreview({
   id,

@@ -47,6 +47,13 @@
 }
 
 body { background: var(--bg); color: var(--text); font-family: var(--font-sans); }
+
+/* Showcase fill (SPEC Block E Screen 0): at >= 1024 px wide and >= 700 px tall, the showcase fills the viewport
+   below the header (h-16 + 1 px border); the footer stays below the fold. */
+@custom-variant lg-tall (@media (width >= 64rem) and (height >= 700px));
+@media (width >= 64rem) and (height >= 700px) {
+  body:has(#showcase) > #main { display: flex; flex-direction: column; height: calc(100dvh - 4rem - 1px); padding-top: 0; padding-bottom: 0; }
+}
 /* Declared with @utility so the SPEC class names also work with variants (e.g. group-hover:gradient-ring). */
 @utility gradient-text { background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @utility gradient-ring { box-shadow: 0 0 0 1px var(--border), 0 0 40px -12px var(--accent-2); }

@@ -13,7 +13,7 @@ export function BuySection({ productId, soldOut: initialSoldOut }: { productId: 
       <div className="mt-8">
         <SoldOutBadge id="sold-out" />
         <p className="mt-3 text-sm text-[var(--text-muted)]">
-          This edition is gone. New prints are released regularly — see the catalogue.
+          This edition is gone. New prints are released regularly — see all works.
         </p>
       </div>
     )
