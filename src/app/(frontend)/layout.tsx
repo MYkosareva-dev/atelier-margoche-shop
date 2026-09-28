@@ -17,18 +17,24 @@ export const metadata: Metadata = {
 
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${fraunces.variable} min-h-screen overflow-x-hidden antialiased`}>
         <header
           id="site-header"
           className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur"
         >
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-            <Link href="/" id="logo" className="font-[family-name:var(--font-display)] text-xl">
+            <Link
+              href="/"
+              id="logo"
+              title="Home"
+              className="font-[family-name:var(--font-display)] text-xl transition-opacity hover:opacity-80"
+            >
               Atelier <span className="gradient-text">Margoche</span>
             </Link>
-            <nav className="flex gap-6 text-sm text-[var(--text-muted)]">
-              <Link href="/">Gallery</Link>
+            <nav className="flex gap-3 text-sm text-[var(--text-muted)]">
+              <Link href="/gallery">Gallery</Link>
+              <span aria-hidden>·</span>
               <Link href="/info/about">About</Link>
             </nav>
           </div>

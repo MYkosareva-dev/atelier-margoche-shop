@@ -9,6 +9,7 @@ A small online shop for art prints — photographs and AI-generated artworks —
 ## How it works
 
 - The owner edits products and pages in the Payload admin; changes go live within a minute, with no redeploy.
+- The home page `/` is a showcase of the prints that are not sold out, one large work at a time; the full catalogue, with a Buy now button on every available card, is at `/gallery`.
 - "Buy now" opens Stripe's hosted Checkout in sandbox (test) mode — no real money moves.
 - An order is marked paid only by the Stripe webhook, after its signature is verified — never by the thank-you page.
 - A declined card leaves the order `pending`; nothing is marked paid.
@@ -47,6 +48,8 @@ npm run dev               # http://localhost:3000
 
 `npm run seed` refuses to run once any product exists, so it cannot overwrite a live catalogue; `npm run seed -- --force` upserts the seed products anyway.
 
+Local development should set `BLOB_READ_WRITE_TOKEN` too, so media served by Payload resolves: the files live in Vercel Blob, not in the local `media/` folder.
+
 On first start, open http://localhost:3000/admin and create the first admin user.
 
 ```bash
@@ -62,7 +65,7 @@ stripe listen --events checkout.session.completed,checkout.session.expired --for
 | `NEXT_PUBLIC_SERVER_URL` | `http://localhost:3000` locally; `https://atelier-margoche-shop.vercel.app` on Vercel |
 | `STRIPE_SECRET_KEY` | Stripe Dashboard (Test mode) → Developers → API keys → Secret key (`sk_test_…`) |
 | `STRIPE_WEBHOOK_SECRET` | Locally: printed by `stripe listen`. Vercel: Developers → Webhooks → endpoint → Signing secret (`whsec_…`) |
-| `BLOB_READ_WRITE_TOKEN` | Vercel → Storage → Blob store (injected automatically when linked). Leave empty locally: uploads go to `media/` |
+| `BLOB_READ_WRITE_TOKEN` | Vercel → Storage → Blob store (injected automatically when linked). Set it locally too |
 
 Use the Supabase **Session pooler** URI (port 5432) locally and the **Transaction pooler** URI (port 6543) on Vercel. The app refuses to start unless the Stripe key starts with `sk_test_`.
 

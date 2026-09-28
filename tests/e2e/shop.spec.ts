@@ -2,11 +2,53 @@ import { expect, test } from '@playwright/test'
 
 // Requires `npm run dev` and a seeded database (`npm run seed`).
 
-test('catalogue renders at least 4 product cards', async ({ page }) => {
-  await page.goto('/')
+test('/gallery renders the catalogue with at least 4 product cards', async ({ page }) => {
+  await page.goto('/gallery')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gallery')
   // At least the 4 seeded products; the owner may have added more through the admin panel.
   await expect(page.locator('#catalogue .product-card').nth(3)).toBeVisible()
+})
+
+test('/ shows the showcase: image, caption with price, arrows and side previews', async ({ page }) => {
+  await page.goto('/')
+  const showcase = page.locator('#showcase')
+  await expect(showcase).toBeVisible()
+  const image = () => showcase.locator('a:not([aria-hidden]) img').first()
+  await expect(image()).toBeVisible()
+  await expect(page.locator('#showcase-caption')).toContainText(/€\d+\.\d{2} incl\. VAT/)
+  // Default viewport is 1280 wide; the seed has 3 available works (Brass & Velvet is sold out), so both previews show.
+  await expect(page.locator('#showcase-prev-preview')).toBeVisible()
+  await expect(page.locator('#showcase-next-preview')).toBeVisible()
+
+  const first = await image().getAttribute('alt')
+  await page.getByRole('button', { name: 'Next work' }).click()
+  await expect(image()).not.toHaveAttribute('alt', first ?? '')
+  await page.locator('#showcase-prev-preview').click()
+  await expect(image()).toHaveAttribute('alt', first ?? '')
+})
+
+test('Buy now on a gallery card starts checkout for that card without opening the product page', async ({ page }) => {
+  // CI runs with dummy Stripe keys, so the server call is stubbed; the request body proves which product was bought.
+  await page.route('**/next/checkout', (route) =>
+    route.fulfill({ json: { url: 'https://checkout.stripe.com/c/pay/cs_test_e2e' } }),
+  )
+  await page.route('https://checkout.stripe.com/**', (route) => route.fulfill({ body: 'stripe checkout stub' }))
+
+  await page.goto('/gallery')
+  const card = page.locator('#catalogue .product-card[href="/products/golden-hour-lisbon"]')
+  const productId = await card.getAttribute('data-product-id')
+  const button = card.locator('xpath=..').getByRole('button', { name: 'Buy now' })
+
+  // Default viewport is 1280 wide: the button is revealed only on hover (SPEC Block E Screen 1).
+  const opacity = () => button.evaluate((el) => getComputedStyle(el.closest('form')!).opacity)
+  expect(await opacity()).toBe('0')
+  await card.hover()
+  await expect.poll(opacity).toBe('1')
+
+  const request = page.waitForRequest('**/next/checkout')
+  await button.click()
+  expect((await request).postDataJSON()).toEqual({ productId })
+  await expect(page).toHaveURL(/^https:\/\/checkout\.stripe\.com\//)
 })
 
 test('clicking the product image opens the lightbox and Esc closes it', async ({ page }) => {
@@ -57,7 +99,7 @@ test('POST /next/checkout rejects an invalid productId with 400 INVALID_BODY', a
 
 test('sold-out product shows "Sold out" and checkout returns 409', async ({ page, request }) => {
   // Seeded with soldOut: true (SPEC Block C seed table).
-  await page.goto('/')
+  await page.goto('/gallery')
   const card = page.locator('#catalogue .product-card[href="/products/brass-and-velvet"]')
   await expect(card).toHaveAttribute('data-sold-out', 'true')
   await expect(card.locator('.badge-soldout')).toHaveText('Sold out')

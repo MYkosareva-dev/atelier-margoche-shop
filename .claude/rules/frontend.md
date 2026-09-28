@@ -8,8 +8,8 @@ paths:
 # Frontend rules (SPEC.md Block E)
 
 - Dark theme only; tokens live in `globals.css` exactly as in Block E. Use `var(--token)`; do not hardcode hex values in components.
-- Element ids and `data-*` attributes named in Block E are contracts for the e2e tests: `#site-header`, `#catalogue`, `.product-card[data-product-id][data-sold-out]`, `#product`, `#product-image`, `#lightbox`, `#buy-form`, `#buy-now`, `#sold-out`, `#ai-disclosure`, `#checkout-cancelled`, `#order[data-order-status]`, `#catalogue-empty`. Keep them.
-- Only the catalogue has `loading.tsx` (in the `(catalogue)` group); detail routes have none so `notFound()` returns a real 404. The frontend group has `not-found.tsx` and `error.tsx` with the exact copy from Block E.
+- Element ids and `data-*` attributes named in Block E are contracts for the e2e tests: `#site-header`, `#showcase`, `#showcase-caption`, `#showcase-prev-preview`, `#showcase-next-preview`, `#showcase-empty`, `#catalogue`, `.product-card[data-product-id][data-sold-out]`, `#product`, `#product-image`, `#lightbox`, `#buy-form`, `#buy-now`, `#sold-out`, `#ai-disclosure`, `#checkout-cancelled`, `#order[data-order-status]`, `#catalogue-empty`. Keep them.
+- Only the catalogue has `loading.tsx` (`gallery/loading.tsx`, covering `/gallery` only); the `/` showcase and detail routes have none so `notFound()` returns a real 404. The frontend group has `not-found.tsx` and `error.tsx` with the exact copy from Block E.
 - Prices render only through `formatEUR(cents)`; always followed by "incl. VAT".
 - Images via `next/image`; Blob hostname allow-listed in `next.config.mjs` `images.remotePatterns`.
 - Public pages: `export const dynamic = 'force-dynamic'` is NOT used; use `export const revalidate = 60` plus hook-driven `revalidatePath`.
