@@ -9,19 +9,22 @@ test('/gallery renders the catalogue with at least 4 product cards', async ({ pa
   await expect(page.locator('#catalogue .product-card').nth(3)).toBeVisible()
 })
 
-test('/ shows the showcase: image, caption with price, next arrow, thumbnails', async ({ page }) => {
+test('/ shows the showcase: image, caption with price, arrows and side previews', async ({ page }) => {
   await page.goto('/')
   const showcase = page.locator('#showcase')
   await expect(showcase).toBeVisible()
-  const image = showcase.locator('a:not([aria-hidden]) img').first()
-  await expect(image).toBeVisible()
+  const image = () => showcase.locator('a:not([aria-hidden]) img').first()
+  await expect(image()).toBeVisible()
   await expect(page.locator('#showcase-caption')).toContainText(/€\d+\.\d{2} incl\. VAT/)
-  // 3 available products in the seed (Brass & Velvet is sold out and not shown).
-  await expect(page.locator('#showcase-thumbs button').nth(2)).toBeVisible()
+  // Default viewport is 1280 wide; the seed has 3 available works (Brass & Velvet is sold out), so both previews show.
+  await expect(page.locator('#showcase-prev-preview')).toBeVisible()
+  await expect(page.locator('#showcase-next-preview')).toBeVisible()
 
-  const before = await image.getAttribute('alt')
+  const first = await image().getAttribute('alt')
   await page.getByRole('button', { name: 'Next work' }).click()
-  await expect(showcase.locator('a:not([aria-hidden]) img').first()).not.toHaveAttribute('alt', before ?? '')
+  await expect(image()).not.toHaveAttribute('alt', first ?? '')
+  await page.locator('#showcase-prev-preview').click()
+  await expect(image()).toHaveAttribute('alt', first ?? '')
 })
 
 test('Buy now on a gallery card starts checkout for that card without opening the product page', async ({ page }) => {
