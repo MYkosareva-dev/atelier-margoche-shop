@@ -937,6 +937,12 @@ Server component (`src/app/(frontend)/gallery/page.tsx`, `revalidate = 60`, meta
 
 Layout (1280 and 375): one large image centred, hero size, `object-contain` inside a 4:5 box capped at `100dvh − 9rem` so it fits the viewport below the header; prev/next arrows (below 1024 px over its left and right edges; at ≥ 1024 px in the gaps between it and the side previews, vertically centred on it); at ≥ 1024 px, side previews of the previous and next works left and right of it; one caption line under it. Below the showcase, centred: link "All works →" → `/`.
 
+Viewport fill (≥ 1024 px wide **and** ≥ 700 px tall, Tailwind custom variant `lg-tall`): `/gallery` is exactly one viewport, with no empty gap above the footer. `globals.css` turns `body:has(#showcase)` into a `100dvh` flex column, makes `#main` the flexible middle (`flex: 1`, `min-height: 0`, no bottom padding) and drops the footer's `mt-24`, so the showcase gets 100dvh minus the header, the main top padding and the footer. Inside it, from top to bottom:
+- **Image row** (`flex-1`): the main image is `h-full` with `aspect-[4/5]` and `max-w-full`, so it scales to the row height and never exceeds the container width (`object-contain` inside). Side previews are `h-[35%]` of the row. The arrows grow with the viewport (`clamp(2.75rem, 5.5dvh, 3.5rem)`) and stay centred in the gaps and on the image.
+- **Bottom band** (fixed height, `shrink-0`): the caption row (`h-16`, content centred) and the "All works →" line (`h-12`).
+
+Measured on a static copy of the markup with the compiled CSS: at 1280 × 800 the image is 386 × 482 and the page height is exactly 800 px; at 1440 × 1000 it is 546 × 682. Shorter than 700 px (e.g. 1280 × 650), the natural-height layout above applies: image capped at `100dvh − 9rem`, previews at 35% of that cap, caption `mt-4`, "All works →" `mt-10`, footer `mt-24`, and the page scrolls. Below 1024 px nothing changes.
+
 ```html
 <h1 class="sr-only">Gallery</h1>
 <section id="showcase" aria-roledescription="carousel" aria-label="Featured works">
@@ -949,9 +955,9 @@ Layout (1280 and 375): one large image centred, hero size, `object-contain` insi
         <a href="/products/golden-hour-lisbon"><img src="…/hero.webp" alt="…" class="object-contain" /></a>
         <!-- next work, rendered hidden so it is preloaded: <a aria-hidden="true" tabindex="-1" class="invisible">…</a> -->
       </div>
-      <!-- < 1024 px: left-2 / right-2 over the image edges; >= 1024 px: outside the image, centred in the 80 px gaps -->
-      <button type="button" aria-label="Previous work" class="absolute top-1/2 left-2 size-11 -translate-y-1/2 rounded-full lg:right-full lg:left-auto lg:mr-4.5"><svg data-icon="chevron-left"/></button>
-      <button type="button" aria-label="Next work" class="absolute top-1/2 right-2 size-11 -translate-y-1/2 rounded-full lg:right-auto lg:left-full lg:ml-4.5"><svg data-icon="chevron-right"/></button>
+      <!-- < 1024 px: left-2 / right-2 over the image edges; >= 1024 px: outside the image, the button's centre 40 px out (middle of the 80 px gap) -->
+      <button type="button" aria-label="Previous work" class="absolute top-1/2 left-2 size-11 -translate-y-1/2 rounded-full lg:right-full lg:left-auto lg:mr-10 lg:translate-x-1/2 lg-tall:size-[clamp(2.75rem,5.5dvh,3.5rem)]"><svg data-icon="chevron-left"/></button>
+      <button type="button" aria-label="Next work" class="absolute top-1/2 right-2 size-11 -translate-y-1/2 rounded-full lg:right-auto lg:left-full lg:ml-10 lg:-translate-x-1/2 lg-tall:size-[clamp(2.75rem,5.5dvh,3.5rem)]"><svg data-icon="chevron-right"/></button>
     </div>
     <button id="showcase-next-preview" type="button" aria-hidden="true" tabindex="-1" class="…same as prev…">…</button>
   </div>
@@ -965,9 +971,9 @@ Layout (1280 and 375): one large image centred, hero size, `object-contain` insi
 <p class="mt-10 text-center"><a id="all-works" href="/">All works →</a></p>
 ```
 
-Side previews (`#showcase-prev-preview`, `#showcase-next-preview`) show the previous and next works' card-size images at about 35% of the main image's height cap, bottom-aligned with the main image (`items-end` on the row; the previews keep their height), at 40% opacity under a subtle `--bg`/30 overlay, 70% on hover (no transition under `prefers-reduced-motion`). Below 1024 px they are hidden; arrows and swipe remain. With 3 or more available works both show; with 2, only the next preview shows (an empty spacer of the same size keeps the main image centred); with 1, none. They are a pointer shortcut only (`aria-hidden`, `tabindex="-1"`), because the arrows already carry the accessible "Previous work" / "Next work" controls.
+Side previews (`#showcase-prev-preview`, `#showcase-next-preview`) show the previous and next works' card-size images at about 35% of the main image's height (of its cap in the natural layout, of the filled row under `lg-tall`), bottom-aligned with the main image (`items-end` on the row; the previews keep their height), at 40% opacity under a subtle `--bg`/30 overlay, 70% on hover (no transition under `prefers-reduced-motion`). Below 1024 px they are hidden; arrows and swipe remain. With 3 or more available works both show; with 2, only the next preview shows (an empty spacer of the same size keeps the main image centred); with 1, none. They are a pointer shortcut only (`aria-hidden`, `tabindex="-1"`), because the arrows already carry the accessible "Previous work" / "Next work" controls.
 
-The main image's box is exactly 4:5 at ≥ 1024 px (its column is capped at `(100dvh − 9rem) × 0.8`), so the arrows sit next to the visible image, not next to letterboxing. They stay inside the main image's container in the DOM wherever they are drawn, so hovering them pauses auto-advance as before.
+The main image's box is exactly 4:5 at ≥ 1024 px (its column is capped at `(100dvh − 9rem) × 0.8`, or sized from the row height under `lg-tall`), so the arrows sit next to the visible image, not next to letterboxing. They stay inside the main image's container in the DOM wherever they are drawn, so hovering them pauses auto-advance as before.
 
 In the caption the kind badge and the compact Buy now share one height (`h-8`) and are vertically centred on the row (`items-center`); both are `rounded-full`, the badge `text-xs` with px-3, the button `text-sm`.
 
@@ -997,6 +1003,8 @@ Actions table:
 > Decision: Header nav as outlined buttons. "Works", "Gallery" and "About" render as outlined buttons with `LayoutGrid` / `Image` / `User` icons, and the current page's button is filled with `--surface-2`, so the header shows where the visitor is; the "·" separator is dropped in favour of a gap-2 between the buttons. The nav became the client component `HeaderNav` because the current page needs `usePathname()`; the logo steps up to `text-2xl`. Below 640 px the logo stays `text-xl` and the buttons show the icon only, with the label kept as `sr-only` text: measured at 375 px, the logo (164 px) plus three labelled buttons (≈ 222 px) exceed the 343 px content width, while icon-only buttons (≈ 142 px) fit.
 
 > Decision: The showcase is a small custom client component, not shadcn Carousel. Carousel needs `embla-carousel-react` plus `embla-carousel-autoplay`, neither of which is installed, while the showcase shows one image at a time and needs only an index, a timer, a key listener and a touch threshold. No dependencies are added.
+
+> Decision: Showcase viewport fill. On desktop screens at least 700 px tall, `/gallery` fills exactly one viewport (header, showcase, footer), so no empty band is left between "All works →" and the footer. The layout is driven by a flex chain (`body` → `#main` → section → image row) instead of a hard-coded footer height, so it still works if the footer wraps. The page-specific part is a `body:has(#showcase)` rule in `globals.css`, because the footer lives in the shared layout. Below 700 px of height the filled image would be too small, so the natural-height layout stays.
 
 > Decision: Route swap. The catalogue grid lives at `/` as "Works" (h1 "Works"; subtitle, cards and `#catalogue` unchanged) and the showcase at `/gallery` as "Gallery", so the full list of prints is the landing page and the showcase is one click away. The grid page sits in the route group `(frontend)/(works)/` together with its `loading.tsx`, so the Suspense boundary still covers only the catalogue (a `loading.tsx` at the `(frontend)` root would also wrap the detail routes and turn their 404s soft). The header has three buttons: "Works" → `/`, "Gallery" → `/gallery`, "About" → `/info/about`; the logo links to `/` (title "Home"). The product page back link "← Works", the "Back to works" buttons on `not-found.tsx` and the order page, and both "All works →" links on the showcase (below the slider and in its empty state) point to `/`. The Products hooks revalidate `/`, `/gallery` and the product page. The showcase lists only products that are not sold out; sold-out works stay visible in the Works grid with their badge.
 
@@ -1062,7 +1070,7 @@ Layout 1280: back link "← Works" top-left above the grid, then two columns `gr
 | State | Exact rendering |
 |---|---|
 | Loading | No skeleton — single query, real 404 required. |
-| Empty (sold out) | `#buy-now` replaced by `<span id="sold-out" class="badge-soldout">Sold out</span>` + p "This edition is gone. New prints are released regularly — see the catalogue." |
+| Empty (sold out) | `#buy-now` replaced by `<span id="sold-out" class="badge-soldout">Sold out</span>` + p "This edition is gone. New prints are released regularly — see all works." |
 | Not found | `notFound()` → `not-found.tsx`: h1 "This page does not exist.", link "Back to works" → `/`. |
 | Error | Toast on failed checkout, copy = `error.message` from Block D table; button returns to idle. |
 
