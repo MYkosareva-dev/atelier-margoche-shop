@@ -897,6 +897,8 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 </footer>
 ```
 
+> Decision: The frontend layout's `<html>` element has `suppressHydrationWarning`. Browser extensions inject attributes into `<html>` before React hydrates, which otherwise logs a hydration mismatch (and would break Block H #3, zero console errors). The flag applies to that element's own attributes only, not to its children.
+
 ### Component table
 
 | Component | shadcn/ui | Size / colors / states |
@@ -926,32 +928,36 @@ export const formatEUR = (cents: number) =>
 
 Server component (`src/app/(frontend)/page.tsx`, `revalidate = 60`) loads products with `soldOut` false (or unset), sorted by `createdAt`, and passes only `id`, `title`, `slug`, `price`, `kind` and the `hero` and `card` image URLs to the client component `Showcase` (`src/components/Showcase.tsx`). Products without an uploaded image are left out of the showcase (they still appear in `/gallery`). The page has a visually hidden h1 "Atelier Margoche".
 
-Layout (1280 and 375): one large image centred, hero size, `object-contain` inside a 4:5 box capped at `100dvh − 9rem` so it fits the viewport below the header; prev/next arrows over its left and right edges; one caption line under it; a row of thumbnails under the caption. Below the showcase, centred: link "All works →" → `/gallery`.
+Layout (1280 and 375): one large image centred, hero size, `object-contain` inside a 4:5 box capped at `100dvh − 9rem` so it fits the viewport below the header; prev/next arrows over its left and right edges; at ≥ 1024 px, side previews of the previous and next works left and right of it; one caption line under it. Below the showcase, centred: link "All works →" → `/gallery`.
 
 ```html
 <h1 class="sr-only">Atelier Margoche</h1>
 <section id="showcase" aria-roledescription="carousel" aria-label="Featured works">
-  <div class="relative">
-    <div class="relative mx-auto aspect-[4/5] max-h-[calc(100dvh-9rem)] w-full">
-      <a href="/products/golden-hour-lisbon"><img src="…/hero.webp" alt="…" class="object-contain" /></a>
-      <!-- next work, rendered hidden so it is preloaded: <a aria-hidden="true" tabindex="-1" class="invisible">…</a> -->
+  <div class="flex items-center justify-center gap-6">
+    <button id="showcase-prev-preview" type="button" aria-hidden="true" tabindex="-1" class="relative hidden aspect-[4/5] h-[calc((100dvh-9rem)*0.35)] opacity-40 hover:opacity-70 lg:block">
+      <img src="…/card.webp" alt="" class="object-cover" /><span class="absolute inset-0 bg-[var(--bg)]/30"></span>
+    </button>
+    <div class="relative w-full lg:flex-1">
+      <div class="relative mx-auto aspect-[4/5] max-h-[calc(100dvh-9rem)] w-full">
+        <a href="/products/golden-hour-lisbon"><img src="…/hero.webp" alt="…" class="object-contain" /></a>
+        <!-- next work, rendered hidden so it is preloaded: <a aria-hidden="true" tabindex="-1" class="invisible">…</a> -->
+      </div>
+      <button type="button" aria-label="Previous work"><svg data-icon="chevron-left"/></button>
+      <button type="button" aria-label="Next work"><svg data-icon="chevron-right"/></button>
     </div>
-    <button type="button" aria-label="Previous work"><svg data-icon="chevron-left"/></button>
-    <button type="button" aria-label="Next work"><svg data-icon="chevron-right"/></button>
+    <button id="showcase-next-preview" type="button" aria-hidden="true" tabindex="-1" class="…same as prev…">…</button>
   </div>
   <div id="showcase-caption" class="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
     <span class="font-medium">Golden Hour, Lisbon</span><span class="badge-kind">Photo</span> ·
     <p class="tabular-nums">€49.00 <span class="text-[var(--text-muted)]">incl. VAT</span></p> ·
     <form class="buy-form"><button type="submit" class="btn-primary buy-now-sm">Buy now</button></form> ·
-    <a href="/products/golden-hour-lisbon">View →</a>
-  </div>
-  <div id="showcase-thumbs" class="mx-auto mt-6 flex w-fit max-w-full gap-3 overflow-x-auto p-1">
-    <button type="button" aria-label="Golden Hour, Lisbon" aria-current="true"><img src="…/card.webp" alt="" /></button>
-    …
+    <a href="/products/golden-hour-lisbon">Details →</a>
   </div>
 </section>
 <p class="mt-10 text-center"><a id="all-works" href="/gallery">All works →</a></p>
 ```
+
+Side previews (`#showcase-prev-preview`, `#showcase-next-preview`) show the previous and next works' card-size images at about 35% of the main image's height cap, vertically centred, at 40% opacity under a subtle `--bg`/30 overlay, 70% on hover (no transition under `prefers-reduced-motion`). Below 1024 px they are hidden; arrows and swipe remain. With 3 or more available works both show; with 2, only the next preview shows (an empty spacer of the same size keeps the main image centred); with 1, none. They are a pointer shortcut only (`aria-hidden`, `tabindex="-1"`), because the arrows already carry the accessible "Previous work" / "Next work" controls.
 
 The kind badge ("Photo" / "AI art") is part of the caption, so AI-generated works are labelled wherever they are offered (Block F §Legal, EU AI Act Art. 50).
 
@@ -959,7 +965,7 @@ The kind badge ("Photo" / "AI art") is part of the caption, so AI-generated work
 |---|---|
 | Loading | No `loading.tsx` — single server query; see the Screen 4 decision on loading boundaries. |
 | Empty (no available products) | `<div id="showcase-empty">` icon `Sparkles`, h2 "No prints yet", p "The atelier is preparing its first release. Check back soon.", link "All works →" → `/gallery`. |
-| One product | Image and caption only; no arrows, no thumbnails, no auto-advance. |
+| One product | Image and caption only; no arrows, no side previews, no auto-advance. |
 | Error | `error.tsx` (same as Screen 1). |
 
 Actions table:
@@ -968,13 +974,13 @@ Actions table:
 |---|---|---|
 | Click the large image | → `/products/[slug]` of the current work | — |
 | Click "Previous work" / "Next work", press ← / → (anywhere on the page, not in a text field), or swipe left/right ≥ 50 px on touch | Previous / next work (wraps around); auto-advance stops for good | — |
-| Click a thumbnail | Jumps to that work; it gets `aria-current="true"` and an `--accent` ring; auto-advance stops for good | — |
+| Click a side preview (≥ 1024 px) | Previous / next work, same as the arrow on that side; auto-advance stops for good | — |
 | Submit the caption Buy now | Same flow as Screen 2 `#buy-form`, for the current work | Same toasts as Screen 2; a 409 also calls `router.refresh()` so the work leaves the showcase |
-| Click "View →" | → `/products/[slug]` | — |
+| Click "Details →" | → `/products/[slug]` | — |
 | Click "All works →" | → `/gallery` | — |
 | 7000 ms pass with no interaction | Next work | — |
 
-> Decision: Auto-advance rules. The showcase moves to the next work every 7000 ms. It pauses while the pointer is over `#showcase` or focus is inside it, and resumes when both leave. The first user interaction (arrow click, thumbnail click, ← / → key, swipe) stops it for good on that page view. Under `prefers-reduced-motion: reduce` it never starts; the preference is read on the client, and the server render treats it as reduced so nothing advances before hydration. The caption is `aria-live="polite"` only once auto-advance is off, so screen readers are not interrupted every 7 s. The next work's image is rendered hidden (`visibility: hidden`, `loading="eager"`) so it is already loaded when it becomes current.
+> Decision: Auto-advance rules. The showcase moves to the next work every 7000 ms. It pauses while the pointer is over `#showcase` or focus is inside it, and resumes when both leave. The first user interaction (arrow click, side-preview click, ← / → key, swipe) stops it for good on that page view. Under `prefers-reduced-motion: reduce` it never starts; the preference is read on the client, and the server render treats it as reduced so nothing advances before hydration. The caption is `aria-live="polite"` only once auto-advance is off, so screen readers are not interrupted every 7 s. The next work's image is rendered hidden (`visibility: hidden`, `loading="eager"`) so it is already loaded when it becomes current.
 
 > Decision: The showcase is a small custom client component, not shadcn Carousel. Carousel needs `embla-carousel-react` plus `embla-carousel-autoplay`, neither of which is installed, while the showcase shows one image at a time and needs only an index, a timer, a key listener and a touch threshold. No dependencies are added.
 
@@ -1308,7 +1314,7 @@ Shop operator is based in Germany, ships to Europe. This section lists what the 
 4. **Payment invariants.** (a) `grep -rn "status: 'paid'" src/` returns exactly one hit, inside `next/stripe/webhook/route.ts`. (b) A declined-card checkout leaves the order `pending` (screenshot of admin Orders list attached to the payments PR). (c) Replaying the same webhook event with `stripe events resend` produces no second write. (d) A request to the webhook without a signature returns 400.
 5. **Live-edit invariant.** Editing a product price in `/admin` on the production deployment is visible on the public page within 60 s without a new Vercel deployment (Vercel → Deployments shows no new build).
 6. **Secrets.** `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` returns nothing. The pattern matches only full-length Stripe keys and connection strings with credentials for a non-localhost host, so `.env.example` comments, CI dummy values and docs that mention key prefixes do not match. `.env.example` lists all 6 variables with source comments. Vercel has the same 6 set for Production and Preview.
-7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): `/gallery` has h1 "Gallery" and at least 4 cards; `/` shows `#showcase` with an image, a caption with a price, a "Next work" arrow that changes the image and at least 3 thumbnails; a gallery card's Buy now posts that card's `productId` to `/next/checkout` and goes to Stripe without opening the product page (server response stubbed); clicking `#product-image` opens `#lightbox` and Esc closes it; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; `/info/impressum` renders.
+7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): `/gallery` has h1 "Gallery" and at least 4 cards; `/` shows `#showcase` with an image, a caption with a price, a "Next work" arrow that changes the image, and at 1280 both side previews, the previous one going back; a gallery card's Buy now posts that card's `productId` to `/next/checkout` and goes to Stripe without opening the product page (server response stubbed); clicking `#product-image` opens `#lightbox` and Esc closes it; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; `/info/impressum` renders.
 
 > Decision: The catalogue e2e test asserts at least 4 cards (the fourth card is visible) instead of exactly 4. The seed creates 4 products, but the owner adds prints through `/admin`, so an exact count would fail against any database that has been used since seeding.
 
