@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
 
@@ -7,7 +8,9 @@ import { getPayload } from '@/lib/payload'
 // Safety net; Payload afterChange/afterDelete hooks revalidate immediately (SPEC Rule B10).
 export const revalidate = 60
 
-export default async function CataloguePage() {
+export const metadata: Metadata = { title: 'Gallery' }
+
+export default async function GalleryPage() {
   const payload = await getPayload()
   const { docs: products } = await payload.find({
     collection: 'products',

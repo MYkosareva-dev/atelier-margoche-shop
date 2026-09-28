@@ -169,7 +169,7 @@ function StatusPill({ status }: { status: Order['status'] }) {
 function BackToGallery() {
   return (
     <Button asChild variant="outline" className="btn-secondary mt-8 h-10 border-[var(--border)] text-[var(--text)]">
-      <Link href="/">
+      <Link href="/gallery">
         <ArrowLeft aria-hidden /> Back to gallery
       </Link>
     </Button>

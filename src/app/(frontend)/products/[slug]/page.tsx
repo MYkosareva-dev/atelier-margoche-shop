@@ -35,7 +35,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <>
-      <Link href="/" className="mb-6 flex w-fit items-center gap-2 text-sm">
+      <Link href="/gallery" className="mb-6 flex w-fit items-center gap-2 text-sm">
         <ArrowLeft className="size-4" aria-hidden /> Gallery
       </Link>
       <Suspense fallback={null}>
