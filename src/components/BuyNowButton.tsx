@@ -18,11 +18,21 @@ type Props = {
   formId?: string
   buttonId?: string
   className?: string
+  /** Overrides on the button itself (the showcase caption matches it to the kind badge). */
+  buttonClassName?: string
   onSoldOut?: () => void
 }
 
 /** Buy now: POST /next/checkout, then redirect to Stripe Checkout (SPEC Block E Screen 2 actions). */
-export function BuyNowButton({ productId, size = 'lg', formId, buttonId, className, onSoldOut }: Props) {
+export function BuyNowButton({
+  productId,
+  size = 'lg',
+  formId,
+  buttonId,
+  className,
+  buttonClassName,
+  onSoldOut,
+}: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -79,6 +89,7 @@ export function BuyNowButton({ productId, size = 'lg', formId, buttonId, classNa
         className={cn(
           'btn-primary rounded-[var(--radius)] bg-[image:var(--gradient)] font-semibold text-[var(--bg)] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] disabled:cursor-not-allowed disabled:opacity-50',
           size === 'lg' ? 'h-12 w-full px-6 md:w-auto' : 'buy-now-sm h-9 px-4',
+          buttonClassName,
         )}
       >
         {loading ? (
