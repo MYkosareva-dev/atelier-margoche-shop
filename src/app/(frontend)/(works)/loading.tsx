@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
-export default function GalleryLoading() {
+export default function WorksLoading() {
   return (
     <>
       <Skeleton className="h-10 w-3/4 max-w-md bg-[var(--surface-2)]" />

@@ -42,8 +42,8 @@ export const Products: CollectionConfig = {
     afterChange: [
       ({ doc, previousDoc, context }) => {
         if (context.disableRevalidate) return
-        revalidatePath('/') // showcase: available products only
-        revalidatePath('/gallery')
+        revalidatePath('/') // Works grid
+        revalidatePath('/gallery') // showcase: available products only
         revalidatePath(`/products/${doc.slug}`)
         if (previousDoc?.slug && previousDoc.slug !== doc.slug) revalidatePath(`/products/${previousDoc.slug}`)
       },
@@ -51,8 +51,8 @@ export const Products: CollectionConfig = {
     afterDelete: [
       ({ doc, context }) => {
         if (context.disableRevalidate) return
-        revalidatePath('/') // showcase: available products only
-        revalidatePath('/gallery')
+        revalidatePath('/') // Works grid
+        revalidatePath('/gallery') // showcase: available products only
         revalidatePath(`/products/${doc.slug}`)
       },
     ],
