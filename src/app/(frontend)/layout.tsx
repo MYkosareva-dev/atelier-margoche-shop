@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${fraunces.variable} min-h-screen overflow-x-hidden antialiased`}>
         <header
           id="site-header"
