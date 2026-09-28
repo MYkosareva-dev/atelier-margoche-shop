@@ -39,7 +39,8 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
   const [storedIndex, setIndex] = useState(0)
   // `items` can shrink on router.refresh() (e.g. a work sold out), so the stored index is clamped.
   const index = Math.min(storedIndex, Math.max(count - 1, 0))
-  // Auto-advance stops for good after the first user interaction; hover and focus only pause it.
+  // Auto-advance stops for good after the first user interaction; hover (main image or a side
+  // preview) and focus inside the showcase only pause it.
   const [stopped, setStopped] = useState(false)
   const [hovering, setHovering] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -96,15 +97,13 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
       ref={sectionRef}
       aria-roledescription="carousel"
       aria-label="Featured works"
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
       onFocus={() => setFocused(true)}
       onBlur={(e) => {
         if (!sectionRef.current?.contains(e.relatedTarget as Node | null)) setFocused(false)
       }}
     >
       <div
-        className="flex items-center justify-center gap-6"
+        className="flex items-end justify-center gap-6"
         onTouchStart={(e) => {
           touchX.current = e.touches[0]?.clientX ?? null
         }}
@@ -117,9 +116,15 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
           if (Math.abs(dx) >= SWIPE_PX) step(dx < 0 ? 1 : -1)
         }}
       >
-        {count >= 2 && <SidePreview id="showcase-prev-preview" item={prevItem} onClick={() => step(-1)} />}
+        {count >= 2 && (
+          <SidePreview id="showcase-prev-preview" item={prevItem} onClick={() => step(-1)} onHover={setHovering} />
+        )}
 
-        <div className="relative w-full min-w-0 lg:flex-1">
+        <div
+          className="relative w-full min-w-0 lg:flex-1"
+          onMouseEnter={() => setHovering(true)}
+          onMouseLeave={() => setHovering(false)}
+        >
           <div className="relative mx-auto aspect-[4/5] max-h-[calc(100dvh-9rem)] w-full">
             {slides.map((item) => {
               const isCurrent = item.id === current.id
@@ -170,7 +175,9 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
           )}
         </div>
 
-        {count >= 2 && <SidePreview id="showcase-next-preview" item={nextItem} onClick={() => step(1)} />}
+        {count >= 2 && (
+          <SidePreview id="showcase-next-preview" item={nextItem} onClick={() => step(1)} onHover={setHovering} />
+        )}
       </div>
 
       <div
@@ -200,10 +207,20 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
   )
 }
 
-// ~35% of the main image's height cap; mouse affordance only (the arrows carry the accessible labels).
+// ~35% of the main image's height cap, bottom-aligned with it; mouse affordance only (the arrows carry the accessible labels).
 const PREVIEW_SIZE = 'aspect-[4/5] h-[calc((100dvh-9rem)*0.35)] shrink-0'
 
-function SidePreview({ id, item, onClick }: { id: string; item: ShowcaseItem | null; onClick: () => void }) {
+function SidePreview({
+  id,
+  item,
+  onClick,
+  onHover,
+}: {
+  id: string
+  item: ShowcaseItem | null
+  onClick: () => void
+  onHover: (hovering: boolean) => void
+}) {
   if (!item) return <div aria-hidden className={cn('hidden lg:block', PREVIEW_SIZE)} />
   return (
     <button
@@ -212,6 +229,8 @@ function SidePreview({ id, item, onClick }: { id: string; item: ShowcaseItem | n
       aria-hidden
       tabIndex={-1}
       onClick={onClick}
+      onMouseEnter={() => onHover(true)}
+      onMouseLeave={() => onHover(false)}
       className={cn(
         'relative hidden overflow-hidden rounded-[var(--radius)] opacity-40 transition-opacity hover:opacity-70 motion-reduce:transition-none lg:block',
         PREVIEW_SIZE,
