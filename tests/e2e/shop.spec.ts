@@ -2,9 +2,19 @@ import { expect, test } from '@playwright/test'
 
 // Requires `npm run dev` and a seeded database (`npm run seed`).
 
-test('catalogue renders 4 product cards', async ({ page }) => {
+test('catalogue renders at least 4 product cards', async ({ page }) => {
   await page.goto('/')
-  await expect(page.locator('#catalogue .product-card')).toHaveCount(4)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gallery')
+  // At least the 4 seeded products; the owner may have added more through the admin panel.
+  await expect(page.locator('#catalogue .product-card').nth(3)).toBeVisible()
+})
+
+test('clicking the product image opens the lightbox and Esc closes it', async ({ page }) => {
+  await page.goto('/products/golden-hour-lisbon')
+  await page.locator('#product-image').click()
+  await expect(page.locator('#lightbox')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('#lightbox')).toBeHidden()
 })
 
 test('AI disclosure shows only for AI art', async ({ page }) => {
