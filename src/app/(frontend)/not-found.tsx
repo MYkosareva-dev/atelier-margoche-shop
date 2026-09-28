@@ -8,8 +8,8 @@ export default function NotFound() {
     <div className="flex flex-col items-center gap-6 py-16 text-center">
       <h1 className="font-[family-name:var(--font-display)] text-4xl">This page does not exist.</h1>
       <Button asChild variant="outline" className="h-10 border-[var(--border)] text-[var(--text)]">
-        <Link href="/gallery">
-          <ArrowLeft aria-hidden /> Back to gallery
+        <Link href="/">
+          <ArrowLeft aria-hidden /> Back to works
         </Link>
       </Button>
     </div>
