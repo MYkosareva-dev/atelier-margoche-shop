@@ -97,14 +97,16 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
       ref={sectionRef}
       aria-roledescription="carousel"
       aria-label="Featured works"
-      className="lg-tall:flex lg-tall:min-h-0 lg-tall:flex-1 lg-tall:flex-col"
+      className="lg-tall:@container"
       onFocus={() => setFocused(true)}
       onBlur={(e) => {
         if (!sectionRef.current?.contains(e.relatedTarget as Node | null)) setFocused(false)
       }}
     >
       <div
-        className="flex items-end justify-center gap-6 lg:gap-20 lg-tall:min-h-0 lg-tall:flex-1"
+        // lg-tall: row height H = the viewport below the header (4rem + 1px) minus the bottom band (h-16 caption + h-12
+        // "All works"), capped so image (0.8H) + two previews (0.28H each) + two 5rem gaps fit the width.
+        className="flex items-end justify-center gap-6 lg:gap-20 lg-tall:h-[min(calc(100dvh-4rem-1px-7rem),calc((100cqw-10rem)/1.36))]"
         onTouchStart={(e) => {
           touchX.current = e.touches[0]?.clientX ?? null
         }}
