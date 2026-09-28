@@ -883,7 +883,7 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 <header id="site-header" class="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur">
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
     <a href="/" id="logo" class="font-[family-name:var(--font-display)] text-xl">Atelier <span class="gradient-text">Margoche</span></a>
-    <nav class="flex gap-6 text-sm text-[var(--text-muted)]"><a href="/">Prints</a><a href="/info/about">About</a></nav>
+    <nav class="flex gap-6 text-sm text-[var(--text-muted)]"><a href="/">Gallery</a><a href="/info/about">About</a></nav>
   </div>
 </header>
 <main id="main" class="mx-auto max-w-6xl px-4 py-10">…</main>
@@ -900,17 +900,18 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 | Component | shadcn/ui | Size / colors / states |
 |---|---|---|
 | Primary button (Buy now) | `Button` size `lg` | h-12, px-6, rounded-[var(--radius)], `background: var(--gradient)`, text `#0b0b0f` font-semibold; hover brightness-110; focus ring 2px `--accent-2`; disabled opacity-50 cursor-not-allowed; loading shows `Loader2` spinning + "Redirecting to secure checkout…" |
-| Secondary button (Back to prints) | `Button` variant `outline` | h-10, border `--border`, text `--text` |
+| Secondary button (Back to gallery) | `Button` variant `outline` | h-10, border `--border`, text `--text` |
 | Product card | `Card` | bg `--surface`, border `--border`, rounded 14, `.gradient-ring` on hover, image aspect 4/5 object-cover |
 | Badge kind | `Badge` variant `secondary` | "Photo" bg `--surface-2`; "AI art" `background: var(--gradient)` text `#0b0b0f` |
 | Badge sold out | `Badge` variant `destructive` | bg `--danger`/15, text `--danger`, text "Sold out" |
 | Price | `<span class="tabular-nums">` | €49.00 from `formatEUR(4900)`; muted suffix "incl. VAT" |
 | Banner (cancelled) | `Alert` | border `--border`, icon `Info`, text as in US4 |
+| Lightbox | custom (`ProductLightbox`, no shadcn `Dialog` installed) | `#lightbox` `role="dialog"` `aria-modal="true"`, fixed full-screen, backdrop `--bg`/95, padding 24px, only the hero-size image (`object-contain`, fitted to the viewport) and a close button (lucide `X`, top-right, `aria-label="Close"`); fade-in via `tw-animate-css`, none under `prefers-reduced-motion` |
 | Toast | `sonner` `toast.error()` | bottom-right on 1280, bottom-center on 375, auto-dismiss 6 s |
 | Skeleton | `Skeleton` | bg `--surface-2`, pulse |
 | Status pill (order) | `Badge` | paid → `--success`/15 text `--success` "Paid"; pending → `--accent`/15 text `--accent` "Confirming…"; cancelled → `--danger`/15 "Cancelled" |
 
-Icons (lucide-react): `Loader2`, `Info`, `CheckCircle2`, `Clock3`, `XCircle`, `ArrowLeft`, `Sparkles` (next to "AI art" disclosure), `Truck`.
+Icons (lucide-react): `Loader2`, `Info`, `CheckCircle2`, `Clock3`, `XCircle`, `ArrowLeft`, `Sparkles` (next to "AI art" disclosure), `Truck`, `X` (lightbox close).
 
 `src/lib/money.ts`:
 ```ts
@@ -920,7 +921,7 @@ export const formatEUR = (cents: number) =>
 
 ### Screen 1 — `/` Catalogue
 
-Layout: hero (h1 + one line) then grid. 1280: `grid-cols-3 gap-8`; 375: `grid-cols-1 gap-6`. Hero h1 in Fraunces 44px/32px: "Prints from the <span class="gradient-text">atelier</span>". Sub: "Photographs and AI-made artworks, printed on archival paper. Free shipping in Europe."
+Layout: hero (h1 + one line) then grid. 1280: `grid-cols-3 gap-8`; 375: `grid-cols-1 gap-6`. Hero h1 in Fraunces 44px/32px: "Gallery". Sub: "Photographs and AI-made artworks, printed on archival paper. Free shipping in Europe."
 
 ```html
 <section id="catalogue" class="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
@@ -945,11 +946,14 @@ Actions: click card → `/products/[slug]`. Sold-out card: badge "Sold out" over
 
 ### Screen 2 — `/products/[slug]` Product detail
 
-Layout 1280: two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), details right sticky top-24. 375: single column, image first.
+Layout 1280: back link "← Gallery" top-left above the grid, then two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), details right sticky top-24. 375: back link, then single column, image first.
 
 ```html
+<a href="/" class="mb-6 flex w-fit items-center gap-2 text-sm"><svg data-icon="arrow-left"/> Gallery</a>
 <article id="product" data-product-id="…">
-  <img id="product-image" src="…/hero.webp" alt="…" class="w-full rounded-[14px] object-cover" />
+  <button type="button" aria-haspopup="dialog" class="block w-full cursor-zoom-in">
+    <img id="product-image" src="…/hero.webp" alt="…" class="w-full cursor-zoom-in rounded-[14px] object-cover" />
+  </button>
   <div id="product-details">
     <span class="badge-kind">AI art</span>
     <h1 class="mt-3 font-[family-name:var(--font-display)] text-4xl">Nebula Bloom</h1>
@@ -958,9 +962,14 @@ Layout 1280: two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), d
     <p class="mt-6 text-2xl tabular-nums">€59.00 <span class="text-base text-[var(--text-muted)]">incl. VAT</span></p>
     <p class="mt-1 flex items-center gap-2 text-sm text-[var(--text-muted)]"><svg data-icon="truck"/> Free shipping in Europe · Ships in 5–7 business days</p>
     <form id="buy-form" class="mt-8"><button id="buy-now" type="submit" class="btn-primary">Buy now</button></form>
-    <a href="/" class="mt-4 inline-flex items-center gap-2 text-sm"><svg data-icon="arrow-left"/> Back to prints</a>
   </div>
 </article>
+
+<!-- only while open, portalled to <body> -->
+<div id="lightbox" role="dialog" aria-modal="true" aria-label="…alt…" class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg)]/95 p-6">
+  <img src="…/hero.webp" alt="…" class="max-h-[calc(100dvh-48px)] max-w-[calc(100vw-48px)] object-contain" />
+  <button type="button" aria-label="Close" class="absolute right-4 top-4"><svg data-icon="x"/></button>
+</div>
 ```
 
 `#ai-disclosure` renders only when `kind === 'ai-art'`. Banner `#checkout-cancelled` (Alert, icon Info) renders above `#product` when `?checkout=cancelled` is present: "Checkout cancelled. Nothing was charged."
@@ -969,7 +978,7 @@ Layout 1280: two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), d
 |---|---|
 | Loading | No skeleton — single query, real 404 required. |
 | Empty (sold out) | `#buy-now` replaced by `<span id="sold-out" class="badge-soldout">Sold out</span>` + p "This edition is gone. New prints are released regularly — see the catalogue." |
-| Not found | `notFound()` → `not-found.tsx`: h1 "This page does not exist.", link "Back to prints". |
+| Not found | `notFound()` → `not-found.tsx`: h1 "This page does not exist.", link "Back to gallery". |
 | Error | Toast on failed checkout, copy = `error.message` from Block D table; button returns to idle. |
 
 Actions table:
@@ -978,6 +987,13 @@ Actions table:
 |---|---|---|
 | Submit `#buy-form` | Button → loading; `fetch('/next/checkout', {method:'POST', body:{productId}})`; on 200 `window.location.assign(url)` | 409 → toast "Sorry, this print just sold out." and page re-renders sold-out state; 429/502/500 → toast with server message; network error → toast "You appear to be offline. Nothing was charged." |
 | Double-click Buy now | Second click ignored (`disabled` while loading) | — |
+| Click `#product-image` (or Enter/Space on its button) | `#lightbox` opens; focus moves to Close; focus is trapped inside; body scroll locked | No image uploaded → placeholder, no lightbox |
+| Click ×, press Esc, or click the backdrop | `#lightbox` closes; body scroll restored; focus returns to the image button | Click on the image itself keeps it open |
+| Click "← Gallery" | → `/` | — |
+
+> Decision: The catalogue is called "Gallery" in every user-visible place: header nav link, catalogue h1 ("Gallery", subtitle unchanged), the product page back link ("← Gallery", moved from under Buy now to top-left above the image) and the "Back to gallery" buttons on `not-found.tsx` and the order page. The footer never had a catalogue link, so it is unchanged. Copy that speaks of prints as products ("No prints yet", "We couldn't load the prints", "Sorry, this print just sold out.") stays, because it names the items, not the page. Routes, ids and the `#catalogue` element are unchanged.
+
+> Decision: The lightbox is a small client component (`src/components/ProductLightbox.tsx`) rather than shadcn `Dialog`, because `@radix-ui/react-dialog` is not installed and the phase adds no dependencies. It handles Esc, backdrop click, focus trap, focus restore and body-scroll lock itself, and renders nothing until opened, so the product page stays cached (`revalidate = 60`).
 
 ### Screen 3 — `/order/[orderId]?session_id=…` Order confirmation
 
@@ -995,7 +1011,7 @@ Server component loads the order by UUID; **if `order.stripeSessionId !== sessio
   </div>
   <div id="shipping" class="mt-6 text-sm"><h2 class="font-medium">Ships to</h2><address class="mt-1 not-italic text-[var(--text-muted)]">Jonas Weber<br/>Bergmannstraße 12<br/>10961 Berlin<br/>Germany</address></div>
   <p class="mt-6 text-sm text-[var(--text-muted)]">A receipt was sent to jonas.weber@example.com by Stripe (test mode).</p>
-  <a href="/" class="btn-secondary mt-8">Back to prints</a>
+  <a href="/" class="btn-secondary mt-8">Back to gallery</a>
 </section>
 ```
 
@@ -1221,11 +1237,13 @@ Shop operator is based in Germany, ships to Europe. This section lists what the 
 
 1. **Files & routes.** Exactly 5 collections (`users`, `media`, `products`, `orders`, `pages`); exactly 2 custom route handlers (`/next/checkout`, `/next/stripe/webhook`); public routes `/`, `/products/[slug]`, `/order/[orderId]`, `/info/[slug]` plus `not-found.tsx` and `error.tsx`; `loading.tsx` for the catalogue only (detail routes need a real 404, Block E). `npm run build` passes with zero TypeScript errors and zero ESLint errors.
 2. **Acceptance boxes.** Every checkbox in Block B passes at 1280 and 375; no horizontal scrollbar at either width on any public route.
-3. **Zero console errors** on this click-script in a fresh browser: `/` → click first card → click Buy now → complete with 4242 → land on `/order/…` → wait for "Paid" → click Back to prints → footer Impressum → footer Privacy → footer Terms.
+3. **Zero console errors** on this click-script in a fresh browser: `/` → click first card → click Buy now → complete with 4242 → land on `/order/…` → wait for "Paid" → click Back to gallery → footer Impressum → footer Privacy → footer Terms.
 4. **Payment invariants.** (a) `grep -rn "status: 'paid'" src/` returns exactly one hit, inside `next/stripe/webhook/route.ts`. (b) A declined-card checkout leaves the order `pending` (screenshot of admin Orders list attached to the payments PR). (c) Replaying the same webhook event with `stripe events resend` produces no second write. (d) A request to the webhook without a signature returns 400.
 5. **Live-edit invariant.** Editing a product price in `/admin` on the production deployment is visible on the public page within 60 s without a new Vercel deployment (Vercel → Deployments shows no new build).
 6. **Secrets.** `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` returns nothing. The pattern matches only full-length Stripe keys and connection strings with credentials for a non-localhost host, so `.env.example` comments, CI dummy values and docs that mention key prefixes do not match. `.env.example` lists all 6 variables with source comments. Vercel has the same 6 set for Production and Preview.
-7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): catalogue renders 4 cards; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; `/info/impressum` renders.
+7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): catalogue renders at least 4 cards; clicking `#product-image` opens `#lightbox` and Esc closes it; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; `/info/impressum` renders.
+
+> Decision: The catalogue e2e test asserts at least 4 cards (the fourth card is visible) instead of exactly 4. The seed creates 4 products, but the owner adds prints through `/admin`, so an exact count would fail against any database that has been used since seeding.
 8. **CI.** `.github/workflows/ci.yml` runs on every PR: `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build` (with dummy env values that satisfy B15's `sk_test_` prefix check and a `DATABASE_URI` pointing at a `postgres:16` service container). A second job `e2e` (needs the first) migrates and seeds its own `postgres:16` service, builds, starts `npm run start` and runs `npm run test:e2e`, uploading `playwright-report` on failure. PR template contains the checklist: tests green · no secrets · matches SPEC.md · screenshots for UI changes.
 9. **Deployment.** Live at `https://<project>.vercel.app`; Vercel build command `npm run ci`, which runs `payload migrate && next build` on Production and only `next build` on Preview (Block A decision); Blob store linked; Stripe webhook endpoint registered and showing recent 200s in the Dashboard; project deployed from the developer's personal GitHub repository, and the full history pushed to the Turing College repository at hand-in.
 10. **Docs.** `README.md` is concise (under 120 lines) with these sections in order: (1) title, one-line pitch, live URL, catalogue screenshot · (2) How it works: live admin edits without redeploy, Stripe hosted Checkout in sandbox, paid only via the signature-verified webhook, declined cards leave the order `pending`; screenshots of the paid order, the admin Orders list and the declined checkout · (3) Owner guide: `/admin`, Products (fields, sold-out toggle), Pages, Media → Vercel Blob, Orders view, reviewer-access note (Block A Roles) · (4) Run locally: one code block (`cp .env.example .env`, `npm install`, `npm run migrate`, `npm run seed`, `npm run dev`), first admin at `/admin`, `stripe listen --events … --forward-to …` · (5) Environment variables: table of name and where to get it (no secrets), Session pooler locally and Transaction pooler on Vercel · (6) Deployment: Vercel from the repository, build `npm run ci`, Blob store and Stripe webhook at `/next/stripe/webhook` · (7) Optional tasks delivered (Orders collection, Order confirmation page, Sold-out state, Second collection: Pages, Written go-live plan → `docs/GO-LIVE-PLAN.md`) plus one "Planned:" line · (8) Test cards · (9) Stack, noting the Payload skills and Stripe plugin used while building. No badges, no table of contents. `docs/GO-LIVE-PLAN.md` covers: Stripe account activation, key swap with new env values, live webhook endpoint + new signing secret, VAT/OSS registration note for cross-border EU sales, replacing draft legal texts, removing the `sk_test_` boot guard deliberately as the last step. `CLAUDE.md` (stage 2) opens with the plain-language description of the shop and states that it needs both a CMS and a payment.

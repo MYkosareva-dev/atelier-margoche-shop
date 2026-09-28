@@ -28,7 +28,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
               Atelier <span className="gradient-text">Margoche</span>
             </Link>
             <nav className="flex gap-6 text-sm text-[var(--text-muted)]">
-              <Link href="/">Prints</Link>
+              <Link href="/">Gallery</Link>
               <Link href="/info/about">About</Link>
             </nav>
           </div>
