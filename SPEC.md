@@ -109,8 +109,8 @@ atelier-margoche-shop/
 │       └── (frontend)/
 │           ├── layout.tsx
 │           ├── globals.css
-│           ├── page.tsx              # / showcase (Screen 0; no loading.tsx)
-│           ├── gallery/page.tsx      # /gallery catalogue (+ loading.tsx, scoped to /gallery)
+│           ├── (works)/page.tsx      # / Works catalogue (Screen 1; + (works)/loading.tsx, scoped to / by the route group)
+│           ├── gallery/page.tsx      # /gallery showcase (Screen 0; no loading.tsx)
 │           ├── products/[slug]/page.tsx            (no loading.tsx — real 404)
 │           ├── order/[orderId]/page.tsx            (no loading.tsx — real 404)
 │           ├── order/[orderId]/OrderStatusPoller.tsx
@@ -141,8 +141,8 @@ atelier-margoche-shop/
 
 | Path | Screen | Visitor | Admin |
 |---|---|---|---|
-| `/` | Showcase: available (not sold-out) products, one large work at a time | ✓ | ✓ |
-| `/gallery` | Catalogue: all products (Gallery) | ✓ | ✓ |
+| `/` | Catalogue: all products (Works) | ✓ | ✓ |
+| `/gallery` | Showcase: available (not sold-out) products, one large work at a time (Gallery) | ✓ | ✓ |
 | `/products/[slug]` | Product detail + Buy now | ✓ | ✓ |
 | `/order/[orderId]?session_id=cs_test_…` | Order confirmation | ✓ (only with matching session_id) | ✓ |
 | `/info/[slug]` | Static page (about, impressum, privacy, terms) | ✓ | ✓ |
@@ -176,7 +176,7 @@ Personas: **Margarita** — the owner. **Jonas** — a customer in Berlin. **Len
 1. In Products → New, she fills title, price, description, chooses kind "AI art".
 2. Clicks the Image field → Upload → picks `nebula-bloom.jpg` (3.2 MB).
 3. Payload uploads to Vercel Blob, generates `card` (800 px) and `hero` (1600 px) sizes, requires alt text.
-4. She saves; the product appears on `/gallery` with the card image (and in the `/` showcase while it is not sold out).
+4. She saves; the product appears on `/` with the card image (and in the `/gallery` showcase while it is not sold out).
 5. Error path: file is 14 MB → "File exceeds the 8 MB limit."; upload rejected.
 6. Error path: file is `.pdf` → "Only JPEG, PNG and WebP images are allowed."
 
@@ -187,7 +187,7 @@ Personas: **Margarita** — the owner. **Jonas** — a customer in Berlin. **Len
 
 ### US3 — Jonas buys a print with the success card
 
-1. Jonas opens `/gallery`, sees 4 products with badges "Photo" / "AI art", clicks "Golden Hour, Lisbon".
+1. Jonas opens `/`, sees 4 products with badges "Photo" / "AI art", clicks "Golden Hour, Lisbon".
 2. Product page shows hero image, description, "€49.00 incl. VAT · Free shipping in Europe", button **Buy now**.
 3. Clicks Buy now → button shows spinner "Redirecting to secure checkout…" → server creates Order `pending` and a Stripe Session → browser redirects to `checkout.stripe.com`.
 4. On Stripe's page he enters email, shipping address in Germany, card `4242 4242 4242 4242`, `12/34`, `123`, clicks Pay.
@@ -218,7 +218,7 @@ Personas: **Margarita** — the owner. **Jonas** — a customer in Berlin. **Len
 ### US5 — Margarita marks a product sold out
 
 1. In admin → Products → "Nebula Bloom" → ticks **Sold out** → Save.
-2. `/gallery` shows the card with a "Sold out" badge and a disabled, greyed button.
+2. `/` shows the card with a "Sold out" badge and a disabled, greyed button.
 3. `/products/nebula-bloom` shows "Sold out" instead of Buy now.
 4. Jonas had the product page open from before; clicks Buy now → `POST /next/checkout` returns 409 → toast "Sorry, this print just sold out." — no Order is created, no redirect.
 5. Error path: race — Jonas already reached Stripe before the toggle. Payment completes; webhook marks the Order `paid` anyway (the sale was accepted at session creation). Margarita sees it in Orders and handles it manually.
@@ -886,8 +886,9 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
     <a href="/" id="logo" title="Home" class="font-[family-name:var(--font-display)] text-xl transition-opacity hover:opacity-80 sm:text-2xl">Atelier <span class="gradient-text">Margoche</span></a>
     <nav class="flex gap-2 text-sm text-[var(--text-muted)]">
-      <a href="/gallery" aria-current="page" class="nav-button flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 hover:bg-[var(--surface-2)] bg-[var(--surface-2)] text-[var(--text)]"><svg data-icon="layout-grid"/>Gallery</a>
-      <a href="/info/about" class="nav-button …same, without the current-page classes…"><svg data-icon="user"/>About</a>
+      <a href="/" aria-current="page" class="nav-button flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 hover:bg-[var(--surface-2)] bg-[var(--surface-2)] text-[var(--text)]"><svg data-icon="layout-grid"/><span class="sr-only sm:not-sr-only">Works</span></a>
+      <a href="/gallery" class="nav-button …same, without the current-page classes…"><svg data-icon="image"/><span class="sr-only sm:not-sr-only">Gallery</span></a>
+      <a href="/info/about" class="nav-button …same, without the current-page classes…"><svg data-icon="user"/><span class="sr-only sm:not-sr-only">About</span></a>
     </nav>
   </div>
 </header>
@@ -900,7 +901,7 @@ Fonts: Inter (body) and Fraunces (display) via `next/font/google`, weights 400/5
 </footer>
 ```
 
-The nav is the client component `HeaderNav` (`src/components/HeaderNav.tsx`), because it reads the current path. The link whose path matches the current page (the path itself or anything below it) gets `aria-current="page"`, `bg-[var(--surface-2)]` and `text-[var(--text)]`.
+The nav is the client component `HeaderNav` (`src/components/HeaderNav.tsx`), because it reads the current path. The link whose path matches the current page (the path itself or anything below it; "Works" at `/` matches `/` only) gets `aria-current="page"`, `bg-[var(--surface-2)]` and `text-[var(--text)]`.
 
 > Decision: The frontend layout's `<html>` element has `suppressHydrationWarning`. Browser extensions inject attributes into `<html>` before React hydrates, which otherwise logs a hydration mismatch (and would break Block H #3, zero console errors). The flag applies to that element's own attributes only, not to its children.
 
@@ -909,9 +910,9 @@ The nav is the client component `HeaderNav` (`src/components/HeaderNav.tsx`), be
 | Component | shadcn/ui | Size / colors / states |
 |---|---|---|
 | Primary button (Buy now) | `Button` size `lg` | h-12, px-6, rounded-[var(--radius)], `background: var(--gradient)`, text `#0b0b0f` font-semibold; hover brightness-110; focus ring 2px `--accent-2`; disabled opacity-50 cursor-not-allowed; loading shows `Loader2` spinning + "Redirecting to secure checkout…" |
-| Primary button, compact (Buy now on gallery cards and in the showcase caption) | `Button` size `sm` | h-9, px-4, same gradient, text colour, radius, focus and loading states as the primary button; no ids (class `buy-now-sm`), because it repeats on a page |
-| Header nav button (Gallery, About) | none (`Link`) | outlined: border `--border`, rounded-lg, px-3 py-1.5, text-sm `--text-muted`, gap-2 between buttons; lucide icon 16 px before the label (from 640 px up); hover bg `--surface-2`; current page bg `--surface-2` text `--text` with `aria-current="page"`; focus ring 2px `--accent-2` |
-| Secondary button (Back to gallery) | `Button` variant `outline` | h-10, border `--border`, text `--text` |
+| Primary button, compact (Buy now on Works cards and in the showcase caption) | `Button` size `sm` | h-9, px-4 (h-8 rounded-full text-sm in the showcase caption, see Screen 0), same gradient, text colour, radius, focus and loading states as the primary button; no ids (class `buy-now-sm`), because it repeats on a page |
+| Header nav button (Works, Gallery, About) | none (`Link`) | outlined: border `--border`, rounded-lg, px-3 py-1.5, text-sm `--text-muted`, gap-2 between buttons; lucide icon 16 px before the label; below 640 px icon only, the label kept as `sr-only` text (the accessible name); hover bg `--surface-2`; current page bg `--surface-2` text `--text` with `aria-current="page"`; focus ring 2px `--accent-2` |
+| Secondary button (Back to works) | `Button` variant `outline` | h-10, border `--border`, text `--text` |
 | Product card | `Card` | bg `--surface`, border `--border`, rounded 14, `.gradient-ring` on hover, image aspect 4/5 object-cover |
 | Badge kind | `Badge` variant `secondary` | "Photo" bg `--surface-2`; "AI art" `background: var(--gradient)` text `#0b0b0f` |
 | Badge sold out | `Badge` variant `destructive` | bg `--danger`/15, text `--danger`, text "Sold out" |
@@ -922,7 +923,7 @@ The nav is the client component `HeaderNav` (`src/components/HeaderNav.tsx`), be
 | Skeleton | `Skeleton` | bg `--surface-2`, pulse |
 | Status pill (order) | `Badge` | paid → `--success`/15 text `--success` "Paid"; pending → `--accent`/15 text `--accent` "Confirming…"; cancelled → `--danger`/15 "Cancelled" |
 
-Icons (lucide-react): `Loader2`, `Info`, `CheckCircle2`, `Clock3`, `XCircle`, `ArrowLeft`, `Sparkles` (next to "AI art" disclosure), `Truck`, `X` (lightbox close), `ChevronLeft` / `ChevronRight` (showcase arrows), `LayoutGrid` (header Gallery), `User` (header About).
+Icons (lucide-react): `Loader2`, `Info`, `CheckCircle2`, `Clock3`, `XCircle`, `ArrowLeft`, `Sparkles` (next to "AI art" disclosure), `Truck`, `X` (lightbox close), `ChevronLeft` / `ChevronRight` (showcase arrows), `LayoutGrid` (header Works), `Image` (header Gallery, imported as `ImageIcon`), `User` (header About).
 
 `src/lib/money.ts`:
 ```ts
@@ -930,47 +931,52 @@ export const formatEUR = (cents: number) =>
   new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(cents / 100)  // "€49.00"
 ```
 
-### Screen 0 — `/` Showcase
+### Screen 0 — `/gallery` Showcase (Gallery)
 
-Server component (`src/app/(frontend)/page.tsx`, `revalidate = 60`) loads products with `soldOut` false (or unset), sorted by `createdAt`, and passes only `id`, `title`, `slug`, `price`, `kind` and the `hero` and `card` image URLs to the client component `Showcase` (`src/components/Showcase.tsx`). Products without an uploaded image are left out of the showcase (they still appear in `/gallery`). The page has a visually hidden h1 "Atelier Margoche".
+Server component (`src/app/(frontend)/gallery/page.tsx`, `revalidate = 60`, metadata title "Gallery") loads products with `soldOut` false (or unset), sorted by `createdAt`, and passes only `id`, `title`, `slug`, `price`, `kind` and the `hero` and `card` image URLs to the client component `Showcase` (`src/components/Showcase.tsx`). Products without an uploaded image are left out of the showcase (they still appear in the Works grid at `/`). The page has a visually hidden h1 "Gallery".
 
-Layout (1280 and 375): one large image centred, hero size, `object-contain` inside a 4:5 box capped at `100dvh − 9rem` so it fits the viewport below the header; prev/next arrows over its left and right edges; at ≥ 1024 px, side previews of the previous and next works left and right of it; one caption line under it. Below the showcase, centred: link "All works →" → `/gallery`.
+Layout (1280 and 375): one large image centred, hero size, `object-contain` inside a 4:5 box capped at `100dvh − 9rem` so it fits the viewport below the header; prev/next arrows (below 1024 px over its left and right edges; at ≥ 1024 px in the gaps between it and the side previews, vertically centred on it); at ≥ 1024 px, side previews of the previous and next works left and right of it; one caption line under it. Below the showcase, centred: link "All works →" → `/`.
 
 ```html
-<h1 class="sr-only">Atelier Margoche</h1>
+<h1 class="sr-only">Gallery</h1>
 <section id="showcase" aria-roledescription="carousel" aria-label="Featured works">
-  <div class="flex items-end justify-center gap-6">
+  <div class="flex items-end justify-center gap-6 lg:gap-20">
     <button id="showcase-prev-preview" type="button" aria-hidden="true" tabindex="-1" class="relative hidden aspect-[4/5] h-[calc((100dvh-9rem)*0.35)] opacity-40 hover:opacity-70 lg:block">
       <img src="…/card.webp" alt="" class="object-cover" /><span class="absolute inset-0 bg-[var(--bg)]/30"></span>
     </button>
-    <div class="relative w-full lg:flex-1">
+    <div class="relative w-full lg:max-w-[calc((100dvh-9rem)*0.8)] lg:flex-1">
       <div class="relative mx-auto aspect-[4/5] max-h-[calc(100dvh-9rem)] w-full">
         <a href="/products/golden-hour-lisbon"><img src="…/hero.webp" alt="…" class="object-contain" /></a>
         <!-- next work, rendered hidden so it is preloaded: <a aria-hidden="true" tabindex="-1" class="invisible">…</a> -->
       </div>
-      <button type="button" aria-label="Previous work"><svg data-icon="chevron-left"/></button>
-      <button type="button" aria-label="Next work"><svg data-icon="chevron-right"/></button>
+      <!-- < 1024 px: left-2 / right-2 over the image edges; >= 1024 px: outside the image, centred in the 80 px gaps -->
+      <button type="button" aria-label="Previous work" class="absolute top-1/2 left-2 size-11 -translate-y-1/2 rounded-full lg:right-full lg:left-auto lg:mr-4.5"><svg data-icon="chevron-left"/></button>
+      <button type="button" aria-label="Next work" class="absolute top-1/2 right-2 size-11 -translate-y-1/2 rounded-full lg:right-auto lg:left-full lg:ml-4.5"><svg data-icon="chevron-right"/></button>
     </div>
     <button id="showcase-next-preview" type="button" aria-hidden="true" tabindex="-1" class="…same as prev…">…</button>
   </div>
   <div id="showcase-caption" class="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
-    <span class="font-medium">Golden Hour, Lisbon</span><span class="badge-kind">Photo</span> ·
+    <span class="font-medium">Golden Hour, Lisbon</span><span class="badge-kind h-8 rounded-full px-3 text-xs">Photo</span> ·
     <p class="tabular-nums">€49.00 <span class="text-[var(--text-muted)]">incl. VAT</span></p> ·
-    <form class="buy-form"><button type="submit" class="btn-primary buy-now-sm">Buy now</button></form> ·
+    <form class="buy-form"><button type="submit" class="btn-primary buy-now-sm h-8 rounded-full text-sm">Buy now</button></form> ·
     <a href="/products/golden-hour-lisbon">Details →</a>
   </div>
 </section>
-<p class="mt-10 text-center"><a id="all-works" href="/gallery">All works →</a></p>
+<p class="mt-10 text-center"><a id="all-works" href="/">All works →</a></p>
 ```
 
 Side previews (`#showcase-prev-preview`, `#showcase-next-preview`) show the previous and next works' card-size images at about 35% of the main image's height cap, bottom-aligned with the main image (`items-end` on the row; the previews keep their height), at 40% opacity under a subtle `--bg`/30 overlay, 70% on hover (no transition under `prefers-reduced-motion`). Below 1024 px they are hidden; arrows and swipe remain. With 3 or more available works both show; with 2, only the next preview shows (an empty spacer of the same size keeps the main image centred); with 1, none. They are a pointer shortcut only (`aria-hidden`, `tabindex="-1"`), because the arrows already carry the accessible "Previous work" / "Next work" controls.
+
+The main image's box is exactly 4:5 at ≥ 1024 px (its column is capped at `(100dvh − 9rem) × 0.8`), so the arrows sit next to the visible image, not next to letterboxing. They stay inside the main image's container in the DOM wherever they are drawn, so hovering them pauses auto-advance as before.
+
+In the caption the kind badge and the compact Buy now share one height (`h-8`) and are vertically centred on the row (`items-center`); both are `rounded-full`, the badge `text-xs` with px-3, the button `text-sm`.
 
 The kind badge ("Photo" / "AI art") is part of the caption, so AI-generated works are labelled wherever they are offered (Block F §Legal, EU AI Act Art. 50).
 
 | State | Exact rendering |
 |---|---|
 | Loading | No `loading.tsx` — single server query; see the Screen 4 decision on loading boundaries. |
-| Empty (no available products) | `<div id="showcase-empty">` icon `Sparkles`, h2 "No prints yet", p "The atelier is preparing its first release. Check back soon.", link "All works →" → `/gallery`. |
+| Empty (no available products) | `<div id="showcase-empty">` icon `Sparkles`, h2 "No prints yet", p "The atelier is preparing its first release. Check back soon.", link "All works →" → `/`. |
 | One product | Image and caption only; no arrows, no side previews, no auto-advance. |
 | Error | `error.tsx` (same as Screen 1). |
 
@@ -983,20 +989,20 @@ Actions table:
 | Click a side preview (≥ 1024 px) | Previous / next work, same as the arrow on that side; auto-advance stops for good | — |
 | Submit the caption Buy now | Same flow as Screen 2 `#buy-form`, for the current work | Same toasts as Screen 2; a 409 also calls `router.refresh()` so the work leaves the showcase |
 | Click "Details →" | → `/products/[slug]` | — |
-| Click "All works →" | → `/gallery` | — |
+| Click "All works →" | → `/` | — |
 | 7000 ms pass with no interaction | Next work | — |
 
 > Decision: Auto-advance rules. The showcase moves to the next work every 7000 ms. It pauses while the pointer is over the main image (its box, including the arrows) or a side preview, or while focus is inside `#showcase`, and resumes when all of these end; the pointer over the caption or the gaps between images does not pause it. The first user interaction (arrow click, side-preview click, ← / → key, swipe) stops it for good on that page view. Under `prefers-reduced-motion: reduce` it never starts; the preference is read on the client, and the server render treats it as reduced so nothing advances before hydration. The caption is `aria-live="polite"` only once auto-advance is off, so screen readers are not interrupted every 7 s. The next work's image is rendered hidden (`visibility: hidden`, `loading="eager"`) so it is already loaded when it becomes current.
 
-> Decision: Header nav as outlined buttons. "Gallery" and "About" render as outlined buttons with `LayoutGrid` / `User` icons, and the current page's button is filled with `--surface-2`, so the header shows where the visitor is; the "·" separator is dropped in favour of a gap-2 between the buttons. The nav became the client component `HeaderNav` because the current page needs `usePathname()`; the logo steps up to `text-2xl`. Below 640 px the logo stays `text-xl` and the icons are hidden, so logo and both buttons fit the 375 px header without horizontal overflow.
+> Decision: Header nav as outlined buttons. "Works", "Gallery" and "About" render as outlined buttons with `LayoutGrid` / `Image` / `User` icons, and the current page's button is filled with `--surface-2`, so the header shows where the visitor is; the "·" separator is dropped in favour of a gap-2 between the buttons. The nav became the client component `HeaderNav` because the current page needs `usePathname()`; the logo steps up to `text-2xl`. Below 640 px the logo stays `text-xl` and the buttons show the icon only, with the label kept as `sr-only` text: measured at 375 px, the logo (164 px) plus three labelled buttons (≈ 222 px) exceed the 343 px content width, while icon-only buttons (≈ 142 px) fit.
 
 > Decision: The showcase is a small custom client component, not shadcn Carousel. Carousel needs `embla-carousel-react` plus `embla-carousel-autoplay`, neither of which is installed, while the showcase shows one image at a time and needs only an index, a timer, a key listener and a touch threshold. No dependencies are added.
 
-> Decision: Route move. The catalogue grid moved from `/` to `/gallery` unchanged (h1 "Gallery", same cards, `loading.tsx` now at `gallery/loading.tsx`), and `/` became the showcase. The logo links to `/` (title "Home"). The header "Gallery" link, the product page "← Gallery" and the "Back to gallery" buttons on `not-found.tsx` and the order page all point to `/gallery`. The Products hooks revalidate `/`, `/gallery` and the product page. The showcase lists only products that are not sold out; sold-out works stay visible in `/gallery` with their badge.
+> Decision: Route swap. The catalogue grid lives at `/` as "Works" (h1 "Works"; subtitle, cards and `#catalogue` unchanged) and the showcase at `/gallery` as "Gallery", so the full list of prints is the landing page and the showcase is one click away. The grid page sits in the route group `(frontend)/(works)/` together with its `loading.tsx`, so the Suspense boundary still covers only the catalogue (a `loading.tsx` at the `(frontend)` root would also wrap the detail routes and turn their 404s soft). The header has three buttons: "Works" → `/`, "Gallery" → `/gallery`, "About" → `/info/about`; the logo links to `/` (title "Home"). The product page back link "← Works", the "Back to works" buttons on `not-found.tsx` and the order page, and both "All works →" links on the showcase (below the slider and in its empty state) point to `/`. The Products hooks revalidate `/`, `/gallery` and the product page. The showcase lists only products that are not sold out; sold-out works stay visible in the Works grid with their badge.
 
-### Screen 1 — `/gallery` Catalogue
+### Screen 1 — `/` Catalogue (Works)
 
-Layout: hero (h1 + one line) then grid. 1280: `grid-cols-3 gap-8`; 375: `grid-cols-1 gap-6`. Hero h1 in Fraunces 44px/32px: "Gallery". Sub: "Photographs and AI-made artworks, printed on archival paper. Free shipping in Europe."
+Layout: hero (h1 + one line) then grid. 1280: `grid-cols-3 gap-8`; 375: `grid-cols-1 gap-6`. Hero h1 in Fraunces 44px/32px: "Works". Server component `src/app/(frontend)/(works)/page.tsx` (no page metadata, so the document title is the default "Atelier Margoche"). Sub: "Photographs and AI-made artworks, printed on archival paper. Free shipping in Europe."
 
 ```html
 <section id="catalogue" class="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
@@ -1025,10 +1031,10 @@ Actions: click card → `/products/[slug]`. Submit a card's Buy now → same flo
 
 ### Screen 2 — `/products/[slug]` Product detail
 
-Layout 1280: back link "← Gallery" top-left above the grid, then two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), details right sticky top-24. 375: back link, then single column, image first.
+Layout 1280: back link "← Works" top-left above the grid, then two columns `grid-cols-[3fr_2fr] gap-12`, image left (hero size), details right sticky top-24. 375: back link, then single column, image first.
 
 ```html
-<a href="/gallery" class="mb-6 flex w-fit items-center gap-2 text-sm"><svg data-icon="arrow-left"/> Gallery</a>
+<a href="/" class="mb-6 flex w-fit items-center gap-2 text-sm"><svg data-icon="arrow-left"/> Works</a>
 <article id="product" data-product-id="…">
   <button type="button" aria-haspopup="dialog" class="block w-full cursor-zoom-in">
     <img id="product-image" src="…/hero.webp" alt="…" class="w-full cursor-zoom-in rounded-[14px] object-cover" />
@@ -1057,7 +1063,7 @@ Layout 1280: back link "← Gallery" top-left above the grid, then two columns `
 |---|---|
 | Loading | No skeleton — single query, real 404 required. |
 | Empty (sold out) | `#buy-now` replaced by `<span id="sold-out" class="badge-soldout">Sold out</span>` + p "This edition is gone. New prints are released regularly — see the catalogue." |
-| Not found | `notFound()` → `not-found.tsx`: h1 "This page does not exist.", link "Back to gallery" → `/gallery`. |
+| Not found | `notFound()` → `not-found.tsx`: h1 "This page does not exist.", link "Back to works" → `/`. |
 | Error | Toast on failed checkout, copy = `error.message` from Block D table; button returns to idle. |
 
 Actions table:
@@ -1068,9 +1074,9 @@ Actions table:
 | Double-click Buy now | Second click ignored (`disabled` while loading) | — |
 | Click `#product-image` (or Enter/Space on its button) | `#lightbox` opens; focus moves to Close; focus is trapped inside; body scroll locked | No image uploaded → placeholder, no lightbox |
 | Click ×, press Esc, or click the backdrop | `#lightbox` closes; body scroll restored; focus returns to the image button | Click on the image itself keeps it open |
-| Click "← Gallery" | → `/gallery` | — |
+| Click "← Works" | → `/` | — |
 
-> Decision: The catalogue is called "Gallery" in every user-visible place: header nav link, catalogue h1 ("Gallery", subtitle unchanged), the product page back link ("← Gallery", moved from under Buy now to top-left above the image) and the "Back to gallery" buttons on `not-found.tsx` and the order page. The footer never had a catalogue link, so it is unchanged. Copy that speaks of prints as products ("No prints yet", "We couldn't load the prints", "Sorry, this print just sold out.") stays, because it names the items, not the page. Routes, ids and the `#catalogue` element are unchanged.
+> Decision: The catalogue is called "Works" in every user-visible place: header nav button, catalogue h1 ("Works", subtitle unchanged), the product page back link ("← Works", top-left above the image) and the "Back to works" buttons on `not-found.tsx` and the order page. "Gallery" names the showcase at `/gallery` (see the Screen 0 route-swap decision). The footer never had a catalogue link, so it is unchanged. Copy that speaks of prints as products ("No prints yet", "We couldn't load the prints", "Sorry, this print just sold out.") stays, because it names the items, not the page. Routes, ids and the `#catalogue` element are unchanged.
 
 > Decision: The lightbox is a small client component (`src/components/ProductLightbox.tsx`) rather than shadcn `Dialog`, because `@radix-ui/react-dialog` is not installed and the phase adds no dependencies. It handles Esc, backdrop click, focus trap, focus restore and body-scroll lock itself, and renders nothing until opened, so the product page stays cached (`revalidate = 60`).
 
@@ -1090,7 +1096,7 @@ Server component loads the order by UUID; **if `order.stripeSessionId !== sessio
   </div>
   <div id="shipping" class="mt-6 text-sm"><h2 class="font-medium">Ships to</h2><address class="mt-1 not-italic text-[var(--text-muted)]">Jonas Weber<br/>Bergmannstraße 12<br/>10961 Berlin<br/>Germany</address></div>
   <p class="mt-6 text-sm text-[var(--text-muted)]">A receipt was sent to jonas.weber@example.com by Stripe (test mode).</p>
-  <a href="/gallery" class="btn-secondary mt-8">Back to gallery</a>
+  <a href="/" class="btn-secondary mt-8">Back to works</a>
 </section>
 ```
 
@@ -1117,7 +1123,7 @@ Server component loads the order by UUID; **if `order.stripeSessionId !== sessio
 
 Layout: `max-w-2xl mx-auto prose prose-invert`. h1 = page title; rich text rendered via `@payloadcms/richtext-lexical/react` `RichText`. Slug not found → `not-found.tsx`. Loading: no skeleton — single query, real 404 required. Empty: content is required, so cannot be empty. Error: `error.tsx` "We couldn't load this page".
 
-> Decision: Only the catalogue has a `loading.tsx`, at `gallery/loading.tsx`, so its Suspense boundary covers `/gallery` alone. `/` (showcase) has none. `/products/[slug]`, `/order/[orderId]` and `/info/[slug]` have no loading boundary. Each is a single query, and without a boundary the response is not streamed before `notFound()` runs, so an unknown slug returns a real HTTP 404 with `not-found.tsx`. A `loading.tsx` there, or at the `(frontend)` root, would send the shell first and downgrade it to a soft 404 (HTTP 200). `/products/[slug]` and `/info/[slug]` return `[]` from `generateStaticParams`, so the build never queries them; they render on first request and are then cached with `revalidate = 60` plus hook-driven `revalidatePath`.
+> Decision: Only the catalogue has a `loading.tsx`, at `(works)/loading.tsx`; the `(works)` route group holds only the catalogue page, so its Suspense boundary covers `/` alone. `/gallery` (showcase) has none. `/products/[slug]`, `/order/[orderId]` and `/info/[slug]` have no loading boundary. Each is a single query, and without a boundary the response is not streamed before `notFound()` runs, so an unknown slug returns a real HTTP 404 with `not-found.tsx`. A `loading.tsx` there, or at the `(frontend)` root, would send the shell first and downgrade it to a soft 404 (HTTP 200). `/products/[slug]` and `/info/[slug]` return `[]` from `generateStaticParams`, so the build never queries them; they render on first request and are then cached with `revalidate = 60` plus hook-driven `revalidatePath`.
 
 ### Admin `/admin`
 
@@ -1127,7 +1133,7 @@ Payload's default UI, unmodified except: `admin.meta.titleSuffix: ' · Atelier M
 
 | Breakpoint | Change |
 |---|---|
-| `< 768` (375 test) | Single-column grids; header nav keeps two buttons, labels only (fits); footer stacks; product detail image above text; buttons full width (`w-full`). |
+| `< 768` (375 test) | Single-column grids; header nav keeps three buttons, icons only with `sr-only` labels (fits); footer stacks; product detail image above text; buttons full width (`w-full`). |
 | `≥ 768` | Catalogue 3 columns; product detail two columns; footer row. |
 | `≥ 1280` (1280 test) | `max-w-6xl` container (1152 px) centered; no other change. |
 
@@ -1318,15 +1324,15 @@ Shop operator is based in Germany, ships to Europe. This section lists what the 
 
 1. **Files & routes.** Exactly 5 collections (`users`, `media`, `products`, `orders`, `pages`); exactly 2 custom route handlers (`/next/checkout`, `/next/stripe/webhook`); public routes `/`, `/gallery`, `/products/[slug]`, `/order/[orderId]`, `/info/[slug]` plus `not-found.tsx` and `error.tsx`; `loading.tsx` for the catalogue only (detail routes need a real 404, Block E). `npm run build` passes with zero TypeScript errors and zero ESLint errors.
 2. **Acceptance boxes.** Every checkbox in Block B passes at 1280 and 375; no horizontal scrollbar at either width on any public route.
-3. **Zero console errors** on this click-script in a fresh browser: `/` → click "All works →" → click first card → click Buy now → complete with 4242 → land on `/order/…` → wait for "Paid" → click Back to gallery → footer Impressum → footer Privacy → footer Terms.
+3. **Zero console errors** on this click-script in a fresh browser: `/gallery` → click "All works →" → click first card → click Buy now → complete with 4242 → land on `/order/…` → wait for "Paid" → click Back to works → footer Impressum → footer Privacy → footer Terms.
 4. **Payment invariants.** (a) `grep -rn "status: 'paid'" src/` returns exactly one hit, inside `next/stripe/webhook/route.ts`. (b) A declined-card checkout leaves the order `pending` (screenshot of admin Orders list attached to the payments PR). (c) Replaying the same webhook event with `stripe events resend` produces no second write. (d) A request to the webhook without a signature returns 400.
 5. **Live-edit invariant.** Editing a product price in `/admin` on the production deployment is visible on the public page within 60 s without a new Vercel deployment (Vercel → Deployments shows no new build).
 6. **Secrets.** `git log --all -p | grep -P "sk_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|postgres(ql)?://[^:\s]+:[^@\s]+@(?!localhost)"` returns nothing. The pattern matches only full-length Stripe keys and connection strings with credentials for a non-localhost host, so `.env.example` comments, CI dummy values and docs that mention key prefixes do not match. `.env.example` lists all 6 variables with source comments. Vercel has the same 6 set for Production and Preview.
-7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): `/gallery` has h1 "Gallery" and at least 4 cards; `/` shows `#showcase` with an image, a caption with a price, a "Next work" arrow that changes the image, and at 1280 both side previews, the previous one going back; a gallery card's Buy now posts that card's `productId` to `/next/checkout` and goes to Stripe without opening the product page (server response stubbed); clicking `#product-image` opens `#lightbox` and Esc closes it; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; `/info/impressum` renders.
+7. **Tests.** `npm run test` (Vitest): `tests/unit/webhook.test.ts` — valid signature (built with `stripe.webhooks.generateTestHeaderString`) marks a mocked pending order paid; invalid signature → 400; duplicate → no second update; `expired` → cancelled. `npm run test:e2e` (Playwright, against `npm run dev` with seeded DB): `/` has h1 "Works" and at least 4 cards; `/gallery` shows `#showcase` with an image, a caption with a price, a "Next work" arrow that changes the image, and at 1280 both side previews, the previous one going back, and "All works →" leads to `/`; the header buttons "Works", "Gallery", "About" navigate and mark the current page with `aria-current="page"`; a Works card's Buy now posts that card's `productId` to `/next/checkout` and goes to Stripe without opening the product page (server response stubbed); clicking `#product-image` opens `#lightbox` and Esc closes it; sold-out product shows "Sold out" and `POST /next/checkout` returns 409; product page shows AI disclosure only for `ai-art`; `/order/<uuid>` with wrong `session_id` → 404; an unknown product → 404 with "Back to works" → `/`; `/info/impressum` renders.
 
 > Decision: The catalogue e2e test asserts at least 4 cards (the fourth card is visible) instead of exactly 4. The seed creates 4 products, but the owner adds prints through `/admin`, so an exact count would fail against any database that has been used since seeding.
 
-> Decision: The gallery-card Buy now e2e test stubs `POST /next/checkout` and the Stripe page with `page.route`. CI runs with `STRIPE_SECRET_KEY=sk_test_dummy`, so a real Checkout Session cannot be created there, and a real call would also leave a cancelled order row per run. The test proves the card sends its own `productId` and that the card link is not followed; the server side of checkout is covered by the 400 and 409 tests and by US3.
+> Decision: The Works-card Buy now e2e test stubs `POST /next/checkout` and the Stripe page with `page.route`. CI runs with `STRIPE_SECRET_KEY=sk_test_dummy`, so a real Checkout Session cannot be created there, and a real call would also leave a cancelled order row per run. The test proves the card sends its own `productId` and that the card link is not followed; the server side of checkout is covered by the 400 and 409 tests and by US3.
 8. **CI.** `.github/workflows/ci.yml` runs on every PR: `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build` (with dummy env values that satisfy B15's `sk_test_` prefix check and a `DATABASE_URI` pointing at a `postgres:16` service container). A second job `e2e` (needs the first) migrates and seeds its own `postgres:16` service, builds, starts `npm run start` and runs `npm run test:e2e`, uploading `playwright-report` on failure. PR template contains the checklist: tests green · no secrets · matches SPEC.md · screenshots for UI changes.
 9. **Deployment.** Live at `https://<project>.vercel.app`; Vercel build command `npm run ci`, which runs `payload migrate && next build` on Production and only `next build` on Preview (Block A decision); Blob store linked; Stripe webhook endpoint registered and showing recent 200s in the Dashboard; project deployed from the developer's personal GitHub repository, and the full history pushed to the Turing College repository at hand-in.
 10. **Docs.** `README.md` is concise (under 120 lines) with these sections in order: (1) title, one-line pitch, live URL, catalogue screenshot · (2) How it works: live admin edits without redeploy, Stripe hosted Checkout in sandbox, paid only via the signature-verified webhook, declined cards leave the order `pending`; screenshots of the paid order, the admin Orders list and the declined checkout · (3) Owner guide: `/admin`, Products (fields, sold-out toggle), Pages, Media → Vercel Blob, Orders view, reviewer-access note (Block A Roles) · (4) Run locally: one code block (`cp .env.example .env`, `npm install`, `npm run migrate`, `npm run seed`, `npm run dev`), first admin at `/admin`, `stripe listen --events … --forward-to …` · (5) Environment variables: table of name and where to get it (no secrets), Session pooler locally and Transaction pooler on Vercel · (6) Deployment: Vercel from the repository, build `npm run ci`, Blob store and Stripe webhook at `/next/stripe/webhook` · (7) Optional tasks delivered (Orders collection, Order confirmation page, Sold-out state, Second collection: Pages, Written go-live plan → `docs/GO-LIVE-PLAN.md`) plus one "Planned:" line · (8) Test cards · (9) Stack, noting the Payload skills and Stripe plugin used while building. No badges, no table of contents. `docs/GO-LIVE-PLAN.md` covers: Stripe account activation, key swap with new env values, live webhook endpoint + new signing secret, VAT/OSS registration note for cross-border EU sales, replacing draft legal texts, removing the `sk_test_` boot guard deliberately as the last step. `CLAUDE.md` (stage 2) opens with the plain-language description of the shop and states that it needs both a CMS and a payment.
