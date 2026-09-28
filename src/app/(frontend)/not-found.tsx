@@ -9,7 +9,7 @@ export default function NotFound() {
       <h1 className="font-[family-name:var(--font-display)] text-4xl">This page does not exist.</h1>
       <Button asChild variant="outline" className="h-10 border-[var(--border)] text-[var(--text)]">
         <Link href="/">
-          <ArrowLeft aria-hidden /> Back to prints
+          <ArrowLeft aria-hidden /> Back to gallery
         </Link>
       </Button>
     </div>

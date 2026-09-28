@@ -66,7 +66,7 @@ function Paid({ order }: { order: Order }) {
           A receipt was sent to {order.customerEmail} by Stripe (test mode).
         </p>
       )}
-      <BackToPrints />
+      <BackToGallery />
     </>
   )
 }
@@ -84,7 +84,7 @@ function Cancelled({ order }: { order: Order }) {
         </Link>
         .
       </p>
-      <BackToPrints />
+      <BackToGallery />
     </>
   )
 }
@@ -166,11 +166,11 @@ function StatusPill({ status }: { status: Order['status'] }) {
   )
 }
 
-function BackToPrints() {
+function BackToGallery() {
   return (
     <Button asChild variant="outline" className="btn-secondary mt-8 h-10 border-[var(--border)] text-[var(--text)]">
       <Link href="/">
-        <ArrowLeft aria-hidden /> Back to prints
+        <ArrowLeft aria-hidden /> Back to gallery
       </Link>
     </Button>
   )

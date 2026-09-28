@@ -21,7 +21,7 @@ export default async function CataloguePage() {
     <>
       <section className="mb-10">
         <h1 className="font-[family-name:var(--font-display)] text-[32px] leading-tight md:text-[44px]">
-          Prints from the <span className="gradient-text">atelier</span>
+          Gallery
         </h1>
         <p className="mt-3 text-[var(--text-muted)]">
           Photographs and AI-made artworks, printed on archival paper. Free shipping in Europe.
