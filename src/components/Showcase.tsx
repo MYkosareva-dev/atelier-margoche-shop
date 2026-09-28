@@ -33,7 +33,7 @@ const subscribeReducedMotion = (onChange: () => void) => {
   return () => mql.removeEventListener('change', onChange)
 }
 
-/** Home showcase (SPEC Block E Screen 0): one large work, arrows, thumbnails, caption with Buy now. */
+/** Gallery showcase at /gallery (SPEC Block E Screen 0): one large work, arrows, side previews, caption with Buy now. */
 export function Showcase({ items }: { items: ShowcaseItem[] }) {
   const count = items.length
   const [storedIndex, setIndex] = useState(0)
@@ -103,7 +103,7 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
       }}
     >
       <div
-        className="flex items-end justify-center gap-6"
+        className="flex items-end justify-center gap-6 lg:gap-20"
         onTouchStart={(e) => {
           touchX.current = e.touches[0]?.clientX ?? null
         }}
@@ -117,11 +117,16 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
         }}
       >
         {count >= 2 && (
-          <SidePreview id="showcase-prev-preview" item={prevItem} onClick={() => step(-1)} onHover={setHovering} />
+          <SidePreview
+            id="showcase-prev-preview"
+            item={prevItem}
+            onClick={() => step(-1)}
+            onHover={setHovering}
+          />
         )}
 
         <div
-          className="relative w-full min-w-0 lg:flex-1"
+          className="relative w-full min-w-0 lg:max-w-[calc((100dvh-9rem)*0.8)] lg:flex-1"
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
         >
@@ -153,13 +158,14 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
             })}
           </div>
 
+          {/* Below 1024 px the arrows overlay the image edges; from 1024 px they sit centred in the gaps next to the side previews. */}
           {count > 1 && (
             <>
               <button
                 type="button"
                 aria-label="Previous work"
                 onClick={() => step(-1)}
-                className="absolute top-1/2 left-2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
+                className="absolute top-1/2 left-2 flex size-11 lg:right-full lg:left-auto lg:mr-4.5 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
               >
                 <ChevronLeft className="size-6" aria-hidden />
               </button>
@@ -167,7 +173,7 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
                 type="button"
                 aria-label="Next work"
                 onClick={() => step(1)}
-                className="absolute top-1/2 right-2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
+                className="absolute top-1/2 right-2 flex size-11 lg:right-auto lg:left-full lg:ml-4.5 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--bg)]/60 text-[var(--text)] backdrop-blur hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] focus-visible:outline-none"
               >
                 <ChevronRight className="size-6" aria-hidden />
               </button>
@@ -176,7 +182,12 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
         </div>
 
         {count >= 2 && (
-          <SidePreview id="showcase-next-preview" item={nextItem} onClick={() => step(1)} onHover={setHovering} />
+          <SidePreview
+            id="showcase-next-preview"
+            item={nextItem}
+            onClick={() => step(1)}
+            onHover={setHovering}
+          />
         )}
       </div>
 
@@ -186,7 +197,7 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
         className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm"
       >
         <span className="text-base font-medium">{current.title}</span>
-        <KindBadge kind={current.kind} />
+        <KindBadge kind={current.kind} className="h-8 rounded-full px-3 text-xs" />
         <span aria-hidden className="text-[var(--text-muted)]">
           ·
         </span>
@@ -194,7 +205,12 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
         <span aria-hidden className="text-[var(--text-muted)]">
           ·
         </span>
-        <BuyNowButton key={current.id} productId={current.id} size="sm" />
+        <BuyNowButton
+          key={current.id}
+          productId={current.id}
+          size="sm"
+          buttonClassName="h-8 rounded-full text-sm"
+        />
         <span aria-hidden className="text-[var(--text-muted)]">
           ·
         </span>
@@ -202,7 +218,6 @@ export function Showcase({ items }: { items: ShowcaseItem[] }) {
           Details →
         </Link>
       </div>
-
     </section>
   )
 }
